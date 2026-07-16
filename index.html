@@ -4,90 +4,463 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Presensi Sekolah</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- QRCode.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📋 Aplikasi Presensi Sekolah</h1>
-            <p>SMK Negeri 1 Contoh</p>
-        </header>
-
-        <div class="main-content">
-            <!-- Form Presensi -->
-            <div class="card">
-                <h2>Form Presensi</h2>
-                <form id="presensiForm">
+    <!-- Login Page -->
+    <div id="loginPage" class="page active">
+        <div class="login-container">
+            <div class="login-box">
+                <div class="login-header">
+                    <img src="images/logo-sekolah.gif" alt="Logo Sekolah" class="logo-gif">
+                    <h1>Aplikasi Presensi</h1>
+                    <h2>Sekolah SMK Negeri 1</h2>
+                </div>
+                <form id="loginForm">
                     <div class="form-group">
-                        <label for="nama">Nama Lengkap</label>
-                        <input type="text" id="nama" placeholder="Masukkan nama lengkap" required>
+                        <label><i class="fas fa-user-graduate"></i> Username</label>
+                        <input type="text" id="username" placeholder="Masukkan NIS/NIP" required>
                     </div>
-
                     <div class="form-group">
-                        <label for="kelas">Kelas</label>
-                        <select id="kelas" required>
-                            <option value="">Pilih Kelas</option>
-                            <option value="X RPL 1">X RPL 1</option>
-                            <option value="X RPL 2">X RPL 2</option>
-                            <option value="XI RPL 1">XI RPL 1</option>
-                            <option value="XI RPL 2">XI RPL 2</option>
-                            <option value="XII RPL 1">XII RPL 1</option>
-                            <option value="XII RPL 2">XII RPL 2</option>
-                        </select>
+                        <label><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="password" placeholder="Masukkan Password" required>
                     </div>
-
-                    <div class="form-group">
-                        <label for="status">Status</label>
-                        <select id="status" required>
-                            <option value="">Pilih Status</option>
-                            <option value="Hadir">✅ Hadir</option>
-                            <option value="Sakit">🤒 Sakit</option>
-                            <option value="Izin">📝 Izin</option>
-                            <option value="Alpha">❌ Alpha</option>
-                        </select>
+                    <button type="submit" class="btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </button>
+                    <div class="login-options">
+                        <span>Login sebagai:</span>
+                        <label><input type="radio" name="role" value="siswa" checked> Siswa</label>
+                        <label><input type="radio" name="role" value="guru"> Guru</label>
+                        <label><input type="radio" name="role" value="admin"> Admin</label>
                     </div>
-
-                    <div class="form-group">
-                        <label for="keterangan">Keterangan (Opsional)</label>
-                        <textarea id="keterangan" rows="3" placeholder="Tambahkan keterangan jika diperlukan"></textarea>
-                    </div>
-
-                    <button type="submit" class="btn-primary">Simpan Presensi</button>
                 </form>
             </div>
-
-            <!-- Tabel Presensi -->
-            <div class="card">
-                <h2>Data Presensi Hari Ini</h2>
-                <div id="loadingData" class="loading">Memuat data...</div>
-                <div id="tableContainer">
-                    <table id="presensiTable">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Nama</th>
-                                <th>Kelas</th>
-                                <th>Status</th>
-                                <th>Keterangan</th>
-                                <th>Waktu</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody">
-                            <tr>
-                                <td colspan="6" class="text-center">Belum ada data presensi</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <button id="refreshData" class="btn-secondary">🔄 Refresh Data</button>
-            </div>
         </div>
-
-        <footer>
-            <p>&copy; 2026 Aplikasi Presensi Sekolah</p>
-        </footer>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Main Dashboard -->
+    <div id="mainApp" class="page">
+        <div class="app-container">
+            <!-- Sidebar -->
+            <nav class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <img src="images/logo-mini.gif" alt="Logo" class="logo-mini">
+                    <h3>Presensi App</h3>
+                </div>
+                <ul class="menu-list">
+                    <li class="menu-item active" data-page="dashboard">
+                        <i class="fas fa-th-large"></i> Dashboard
+                    </li>
+                    <li class="menu-item" data-page="data-siswa">
+                        <i class="fas fa-users"></i> Data Siswa
+                    </li>
+                    <li class="menu-item" data-page="data-guru">
+                        <i class="fas fa-chalkboard-teacher"></i> Data Guru
+                    </li>
+                    <li class="menu-item" data-page="laporan">
+                        <i class="fas fa-file-alt"></i> Laporan
+                    </li>
+                    <li class="menu-item" data-page="kelola-absen">
+                        <i class="fas fa-clock"></i> Kelola Absen
+                    </li>
+                    <li class="menu-item" data-page="scan-absen">
+                        <i class="fas fa-qrcode"></i> Scan Absensi
+                    </li>
+                </ul>
+                <div class="sidebar-footer">
+                    <div class="user-info" id="userInfo">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="userName">User</span>
+                    </div>
+                    <button onclick="logout()" class="btn-logout">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="main-content">
+                <header class="top-bar">
+                    <div class="top-bar-left">
+                        <button id="toggleSidebar" class="btn-toggle">
+                            <i class="fas fa-bars"></i>
+                        </button>
+                        <h2 id="pageTitle">Dashboard</h2>
+                    </div>
+                    <div class="top-bar-right">
+                        <span id="currentDateTime"></span>
+                        <button onclick="refreshData()" class="btn-refresh">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </header>
+
+                <div class="content-area">
+                    <!-- Dashboard Page -->
+                    <div id="dashboardPage" class="page-content active">
+                        <div class="dashboard-grid">
+                            <!-- Stats Cards -->
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                                <div class="stat-info">
+                                    <h3>Total Siswa</h3>
+                                    <span id="totalSiswa">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-check-circle text-success"></i></div>
+                                <div class="stat-info">
+                                    <h3>Hadir</h3>
+                                    <span id="totalHadir">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-bed text-warning"></i></div>
+                                <div class="stat-info">
+                                    <h3>Sakit</h3>
+                                    <span id="totalSakit">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-file-alt text-info"></i></div>
+                                <div class="stat-info">
+                                    <h3>Izin</h3>
+                                    <span id="totalIzin">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon"><i class="fas fa-times-circle text-danger"></i></div>
+                                <div class="stat-info">
+                                    <h3>Alpha</h3>
+                                    <span id="totalAlpha">0</span>
+                                </div>
+                            </div>
+
+                            <!-- Quick Access -->
+                            <div class="quick-access">
+                                <h3><i class="fas fa-bolt"></i> Akses Cepat</h3>
+                                <div class="quick-access-grid">
+                                    <button onclick="navigateTo('scan-absen')" class="quick-btn">
+                                        <i class="fas fa-qrcode fa-2x"></i>
+                                        <span>Scan Absensi</span>
+                                    </button>
+                                    <button onclick="navigateTo('data-siswa')" class="quick-btn">
+                                        <i class="fas fa-users fa-2x"></i>
+                                        <span>Data Siswa</span>
+                                    </button>
+                                    <button onclick="navigateTo('laporan')" class="quick-btn">
+                                        <i class="fas fa-file-alt fa-2x"></i>
+                                        <span>Laporan</span>
+                                    </button>
+                                    <button onclick="navigateTo('kelola-absen')" class="quick-btn">
+                                        <i class="fas fa-calendar-alt fa-2x"></i>
+                                        <span>Hari Libur</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Chart -->
+                            <div class="chart-container">
+                                <h3><i class="fas fa-chart-bar"></i> Statistik Kehadiran Bulan Ini</h3>
+                                <canvas id="kehadiranChart"></canvas>
+                            </div>
+
+                            <!-- Filters -->
+                            <div class="filters-container">
+                                <div class="filter-group">
+                                    <label>Kelas:</label>
+                                    <select id="filterKelas" onchange="updateDashboard()">
+                                        <option value="all">Semua Kelas</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Bulan:</label>
+                                    <select id="filterBulan" onchange="updateDashboard()">
+                                        <option value="0">Januari</option>
+                                        <option value="1">Februari</option>
+                                        <option value="2">Maret</option>
+                                        <option value="3">April</option>
+                                        <option value="4">Mei</option>
+                                        <option value="5">Juni</option>
+                                        <option value="6">Juli</option>
+                                        <option value="7">Agustus</option>
+                                        <option value="8">September</option>
+                                        <option value="9">Oktober</option>
+                                        <option value="10">November</option>
+                                        <option value="11">Desember</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Siswa Page -->
+                    <div id="dataSiswaPage" class="page-content">
+                        <div class="data-table-container">
+                            <div class="table-toolbar">
+                                <div class="toolbar-left">
+                                    <button onclick="tambahSiswa()" class="btn-primary">
+                                        <i class="fas fa-plus"></i> Tambah Siswa
+                                    </button>
+                                    <button onclick="refreshDataSiswa()" class="btn-secondary">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                </div>
+                                <div class="toolbar-right">
+                                    <input type="text" id="searchSiswa" placeholder="Cari siswa..." onkeyup="filterSiswa()">
+                                    <select id="filterSiswaKelas" onchange="filterSiswa()">
+                                        <option value="all">Semua Kelas</option>
+                                    </select>
+                                    <select id="showEntries" onchange="updateSiswaTable()">
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="siswaTable">
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>NIS/NISN</th>
+                                            <th>Nama Lengkap</th>
+                                            <th>Kelas</th>
+                                            <th>Jenis Kelamin</th>
+                                            <th>Tanggal Lahir</th>
+                                            <th>Agama</th>
+                                            <th>Nama Ayah</th>
+                                            <th>Nama Ibu</th>
+                                            <th>No.HP</th>
+                                            <th>Alamat</th>
+                                            <th>Keterangan</th>
+                                            <th>Password</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="siswaTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <span id="siswaInfo">Menampilkan 0 dari 0 data</span>
+                                <div class="pagination">
+                                    <button onclick="prevSiswaPage()"><i class="fas fa-chevron-left"></i></button>
+                                    <span id="siswaPageInfo">1</span>
+                                    <button onclick="nextSiswaPage()"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Guru Page -->
+                    <div id="dataGuruPage" class="page-content">
+                        <div class="data-table-container">
+                            <div class="table-toolbar">
+                                <div class="toolbar-left">
+                                    <button onclick="tambahGuru()" class="btn-primary">
+                                        <i class="fas fa-plus"></i> + Tambah Guru
+                                    </button>
+                                    <button onclick="refreshDataGuru()" class="btn-secondary">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                </div>
+                                <div class="toolbar-right">
+                                    <input type="text" id="searchGuru" placeholder="Cari username..." onkeyup="filterGuru()">
+                                    <select id="filterGuruKelas" onchange="filterGuru()">
+                                        <option value="all">Semua Kelas</option>
+                                    </select>
+                                    <select id="showGuruEntries" onchange="updateGuruTable()">
+                                        <option value="10">10</option>
+                                        <option value="20">20</option>
+                                        <option value="30">30</option>
+                                        <option value="40">40</option>
+                                        <option value="50">50</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="guruTable">
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Username</th>
+                                            <th>Guru Kelas</th>
+                                            <th>Password</th>
+                                            <th>Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="guruTableBody">
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="table-footer">
+                                <span id="guruInfo">Menampilkan 0 dari 0 data</span>
+                                <div class="pagination">
+                                    <button onclick="prevGuruPage()"><i class="fas fa-chevron-left"></i></button>
+                                    <span id="guruPageInfo">1</span>
+                                    <button onclick="nextGuruPage()"><i class="fas fa-chevron-right"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Laporan Page -->
+                    <div id="laporanPage" class="page-content">
+                        <div class="laporan-container">
+                            <h3><i class="fas fa-file-pdf"></i> Laporan Kehadiran</h3>
+                            <div class="laporan-filters">
+                                <div class="filter-group">
+                                    <label>Kelas:</label>
+                                    <select id="laporanKelas">
+                                        <option value="all">Semua Kelas</option>
+                                    </select>
+                                </div>
+                                <div class="filter-group">
+                                    <label>Bulan:</label>
+                                    <select id="laporanBulan">
+                                        <option value="0">Januari</option>
+                                        <option value="1">Februari</option>
+                                        <option value="2">Maret</option>
+                                        <option value="3">April</option>
+                                        <option value="4">Mei</option>
+                                        <option value="5">Juni</option>
+                                        <option value="6">Juli</option>
+                                        <option value="7">Agustus</option>
+                                        <option value="8">September</option>
+                                        <option value="9">Oktober</option>
+                                        <option value="10">November</option>
+                                        <option value="11">Desember</option>
+                                    </select>
+                                </div>
+                                <button onclick="generateLaporan()" class="btn-primary">
+                                    <i class="fas fa-file-export"></i> Generate Laporan
+                                </button>
+                                <button onclick="exportLaporan()" class="btn-success">
+                                    <i class="fas fa-download"></i> Export PDF
+                                </button>
+                            </div>
+                            <div id="laporanContent" class="laporan-content">
+                                <!-- Laporan akan ditampilkan disini -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kelola Absen Page -->
+                    <div id="kelolaAbsenPage" class="page-content">
+                        <div class="kelola-absen-container">
+                            <h3><i class="fas fa-clock"></i> Pengaturan Jadwal</h3>
+                            <div class="jadwal-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Mata Pelajaran</label>
+                                        <input type="text" id="mapelInput" placeholder="Nama Mata Pelajaran">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Jam Datang</label>
+                                        <input type="time" id="jamDatang">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Jam Selesai</label>
+                                        <input type="time" id="jamSelesai">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Kelas</label>
+                                        <select id="jadwalKelas">
+                                            <option value="">Pilih Kelas</option>
+                                        </select>
+                                    </div>
+                                    <button onclick="tambahJadwal()" class="btn-primary">
+                                        <i class="fas fa-plus"></i> Tambah
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="jadwalList" class="jadwal-list">
+                                <!-- Daftar jadwal -->
+                            </div>
+
+                            <h3><i class="fas fa-calendar-times"></i> Hari Libur</h3>
+                            <div class="libur-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Tanggal</label>
+                                        <input type="date" id="tanggalLibur">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Keterangan</label>
+                                        <input type="text" id="keteranganLibur" placeholder="Hari libur...">
+                                    </div>
+                                    <button onclick="tambahLibur()" class="btn-primary">
+                                        <i class="fas fa-plus"></i> Tambah
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="liburList" class="libur-list">
+                                <!-- Daftar hari libur -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scan Absensi Page -->
+                    <div id="scanAbsenPage" class="page-content">
+                        <div class="scan-container">
+                            <h3><i class="fas fa-qrcode"></i> Scan Presensi Kehadiran</h3>
+                            <div class="scan-grid">
+                                <div class="scan-video">
+                                    <video id="video" autoplay playsinline></video>
+                                    <canvas id="canvas" style="display:none;"></canvas>
+                                    <div id="qrResult"></div>
+                                    <button onclick="startScan()" class="btn-primary">
+                                        <i class="fas fa-camera"></i> Mulai Scan
+                                    </button>
+                                    <button onclick="stopScan()" class="btn-danger">
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                </div>
+                                <div class="scan-info">
+                                    <div class="gps-info">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span id="gpsLocation">Mengambil lokasi...</span>
+                                    </div>
+                                    <div class="scan-result">
+                                        <h4>Hasil Scan:</h4>
+                                        <div id="scanResult"></div>
+                                    </div>
+                                    <div class="quick-presensi">
+                                        <h4>Input Manual:</h4>
+                                        <div class="presensi-radio">
+                                            <label><input type="radio" name="status" value="Hadir"> Hadir</label>
+                                            <label><input type="radio" name="status" value="Sakit"> Sakit</label>
+                                            <label><input type="radio" name="status" value="Izin"> Izin</label>
+                                            <label><input type="radio" name="status" value="Alpha"> Alpha</label>
+                                        </div>
+                                        <button onclick="selesaiSemua()" class="btn-success">
+                                            <i class="fas fa-check-double"></i> Jam Selesai Semua
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/siswa.js"></script>
+    <script src="js/guru.js"></script>
+    <script src="js/laporan.js"></script>
+    <script src="js/kelola-absen.js"></script>
+    <script src="js/scan-absen.js"></script>
 </body>
 </html>
