@@ -1,0 +1,370 @@
+// Google Apps Script untuk integrasi dengan Spreadsheet
+const SPREADSHEET_ID = '1JqCQR3r1ctBm0O2pT_jnAkqRHp1N9KH0E2lQ2H9RTP0';
+
+// Fungsi untuk inisialisasi sheet
+function initializeSheets() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  // Buat sheet jika belum ada
+  const sheetNames = ['Siswa', 'Guru', 'Absensi', 'Jadwal', 'Libur'];
+  sheetNames.forEach(name => {
+    let sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+    }
+  });
+
+  // Setup header untuk setiap sheet
+  setupHeaders(ss);
+
+  return 'Sheets initialized';
+}
+
+function setupHeaders(ss) {
+  // Header Siswa
+  const siswaSheet = ss.getSheetByName('Siswa');
+  if (siswaSheet.getLastRow() === 0) {
+    siswaSheet.appendRow([
+      'NIS', 'Nama Lengkap', 'Kelas', 'Jenis Kelamin',
+      'Tanggal Lahir', 'Agama', 'Nama Ayah', 'Nama Ibu',
+      'No.HP', 'Alamat', 'Keterangan', 'Password'
+    ]);
+  }
+
+  // Header Guru
+  const guruSheet = ss.getSheetByName('Guru');
+  if (guruSheet.getLastRow() === 0) {
+    guruSheet.appendRow(['Username', 'Guru Kelas', 'Password']);
+  }
+
+  // Header Absensi
+  const absenSheet = ss.getSheetByName('Absensi');
+  if (absenSheet.getLastRow() === 0) {
+    absenSheet.appendRow([
+      'NIS', 'Nama', 'Kelas', 'Tanggal', 'Waktu',
+      'Status', 'Keterangan', 'Lokasi'
+    ]);
+  }
+
+  // Header Jadwal
+  const jadwalSheet = ss.getSheetByName('Jadwal');
+  if (jadwalSheet.getLastRow() === 0) {
+    jadwalSheet.appendRow(['Mata Pelajaran', 'Jam Datang', 'Jam Selesai', 'Kelas']);
+  }
+
+  // Header Libur
+  const liburSheet = ss.getSheetByName('Libur');
+  if (liburSheet.getLastRow() === 0) {
+    liburSheet.appendRow(['Tanggal', 'Keterangan']);
+  }
+}
+
+// Fungsi untuk CRUD Siswa
+function getSiswa() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Siswa');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  return rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+}
+
+function addSiswa(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Siswa');
+  const row = [
+    data.nis, data.nama, data.kelas, data.jk,
+    data.tglLahir, data.agama, data.ayah, data.ibu,
+    data.hp, data.alamat, data.keterangan, data.password
+  ];
+  sheet.appendRow(row);
+  return 'Siswa added';
+}
+
+function updateSiswa(nis, data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Siswa');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === nis) {
+      const row = [
+        data.nis || values[i][0],
+        data.nama || values[i][1],
+        data.kelas || values[i][2],
+        data.jk || values[i][3],
+        data.tglLahir || values[i][4],
+        data.agama || values[i][5],
+        data.ayah || values[i][6],
+        data.ibu || values[i][7],
+        data.hp || values[i][8],
+        data.alamat || values[i][9],
+        data.keterangan || values[i][10],
+        data.password || values[i][11]
+      ];
+      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+      return 'Siswa updated';
+    }
+  }
+  return 'Siswa not found';
+}
+
+function deleteSiswa(nis) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Siswa');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === nis) {
+      sheet.deleteRow(i + 1);
+      return 'Siswa deleted';
+    }
+  }
+  return 'Siswa not found';
+}
+
+// Fungsi untuk CRUD Guru
+function getGuru() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Guru');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  return rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+}
+
+function addGuru(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Guru');
+  sheet.appendRow([data.username, data.kelas, data.password]);
+  return 'Guru added';
+}
+
+function updateGuru(username, data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Guru');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === username) {
+      sheet.getRange(i + 1, 1, 1, 3).setValues([
+        [data.username || values[i][0],
+         data.kelas || values[i][1],
+         data.password || values[i][2]]
+      ]);
+      return 'Guru updated';
+    }
+  }
+  return 'Guru not found';
+}
+
+function deleteGuru(username) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Guru');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === username) {
+      sheet.deleteRow(i + 1);
+      return 'Guru deleted';
+    }
+  }
+  return 'Guru not found';
+}
+
+// Fungsi untuk Absensi
+function getAbsensi() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Absensi');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  return rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+}
+
+function addAbsensi(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Absensi');
+  const row = [
+    data.nis, data.nama, data.kelas, data.tanggal,
+    data.waktu, data.status, data.keterangan, data.lokasi || ''
+  ];
+  sheet.appendRow(row);
+  return 'Absensi added';
+}
+
+// Fungsi untuk Jadwal
+function getJadwal() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Jadwal');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  return rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+}
+
+function addJadwal(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Jadwal');
+  sheet.appendRow([data.mapel, data.jamDatang, data.jamSelesai, data.kelas]);
+  return 'Jadwal added';
+}
+
+function deleteJadwal(mapel, kelas) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Jadwal');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === mapel && values[i][3] === kelas) {
+      sheet.deleteRow(i + 1);
+      return 'Jadwal deleted';
+    }
+  }
+  return 'Jadwal not found';
+}
+
+// Fungsi untuk Libur
+function getLibur() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Libur');
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+
+  return rows.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      obj[h] = row[i];
+    });
+    return obj;
+  });
+}
+
+function addLibur(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Libur');
+  sheet.appendRow([data.tanggal, data.keterangan]);
+  return 'Libur added';
+}
+
+function deleteLibur(tanggal) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Libur');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === tanggal) {
+      sheet.deleteRow(i + 1);
+      return 'Libur deleted';
+    }
+  }
+  return 'Libur not found';
+}
+
+// Fungsi untuk doGet (Web App)
+function doGet(e) {
+  return ContentService.createTextOutput('Aplikasi Presensi Sekolah - Backend');
+}
+
+// Fungsi untuk validasi login
+function validateLogin(username, password, role) {
+  let sheetName = role === 'siswa' ? 'Siswa' : 'Guru';
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(sheetName);
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === username && values[i][values[i].length - 1] === password) {
+      return {
+        username: values[i][0],
+        nama: values[i][1],
+        kelas: values[i][2] || '',
+        role: role
+      };
+    }
+  }
+  return null;
+}
+
+// Fungsi untuk generate QR Code
+function generateQRCodeData(nis) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Siswa');
+  const values = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < values.length; i++) {
+    if (values[i][0] === nis) {
+      return JSON.stringify({
+        nis: values[i][0],
+        nama: values[i][1],
+        kelas: values[i][2],
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+  return null;
+}
+
+// Fungsi untuk export laporan
+function exportLaporan(kelas, bulan, tahun) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Absensi');
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const rows = values.slice(1);
+
+  let filtered = rows.filter(row => {
+    const tanggal = new Date(row[3]);
+    const matchKelas = kelas === 'all' || row[2] === kelas;
+    const matchBulan = bulan === '' || tanggal.getMonth() === parseInt(bulan);
+    const matchTahun = tahun === '' || tanggal.getFullYear() === parseInt(tahun);
+    return matchKelas && matchBulan && matchTahun;
+  });
+
+  // Create new sheet for report
+  const reportName = `Laporan_${kelas}_${bulan}_${tahun}`;
+  let reportSheet = ss.getSheetByName(reportName);
+  if (reportSheet) {
+    ss.deleteSheet(reportSheet);
+  }
+  reportSheet = ss.insertSheet(reportName);
+
+  // Write headers
+  reportSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+
+  // Write data
+  if (filtered.length > 0) {
+    reportSheet.getRange(2, 1, filtered.length, filtered[0].length).setValues(filtered);
+  }
+
+  return reportName;
+}

@@ -4,463 +4,3220 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aplikasi Presensi Sekolah</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <!-- QRCode.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ===== RESET & ROOT ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --dark: #0f172a;
+            --gray-900: #111827;
+            --gray-800: #1f2937;
+            --gray-700: #374151;
+            --gray-600: #4b5563;
+            --gray-500: #6b7280;
+            --gray-400: #9ca3af;
+            --gray-300: #d1d5db;
+            --gray-200: #e5e7eb;
+            --gray-100: #f3f4f6;
+            --gray-50: #f9fafb;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            overflow-x: hidden;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--gray-100);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--primary-light);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary);
+        }
+
+        /* ===== PAGE ===== */
+        .page {
+            display: none;
+            min-height: 100vh;
+            animation: fadeIn 0.4s ease;
+        }
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* ===== LOGIN PAGE ===== */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        .login-page::before {
+            content: '';
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent 70%);
+            top: -200px;
+            right: -200px;
+            border-radius: 50%;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .login-page::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.1), transparent 70%);
+            bottom: -100px;
+            left: -100px;
+            border-radius: 50%;
+            animation: float 10s ease-in-out infinite reverse;
+        }
+
+        .login-box {
+            position: relative;
+            z-index: 1;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-xl);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 440px;
+            animation: slideUp 0.6s ease;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .login-box .logo-section {
+            text-align: center;
+            margin-bottom: 36px;
+        }
+
+        .login-box .logo-section .logo-icon {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .login-box .logo-section h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .login-box .logo-section h1 span {
+            color: var(--primary-light);
+        }
+
+        .login-box .logo-section p {
+            color: var(--gray-400);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .login-box .form-group {
+            margin-bottom: 20px;
+        }
+
+        .login-box .form-group label {
+            display: block;
+            color: var(--gray-300);
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .login-box .form-group label i {
+            margin-right: 8px;
+            color: var(--primary-light);
+        }
+
+        .login-box .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius);
+            color: white;
+            font-size: 14px;
+            transition: var(--transition);
+            font-family: inherit;
+        }
+
+        .login-box .form-group input::placeholder {
+            color: var(--gray-500);
+        }
+
+        .login-box .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+        }
+
+        .login-box .role-selector {
+            display: flex;
+            gap: 12px;
+            margin: 20px 0 24px;
+            flex-wrap: wrap;
+        }
+
+        .login-box .role-selector label {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius);
+            color: var(--gray-400);
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .login-box .role-selector label:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .login-box .role-selector input[type="radio"] {
+            display: none;
+        }
+
+        .login-box .role-selector input[type="radio"]:checked + label {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+
+        .login-box .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: var(--radius);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-box .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.6s;
+        }
+
+        .login-box .btn-login:hover::before {
+            left: 100%;
+        }
+
+        .login-box .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+        }
+
+        .login-box .btn-login i {
+            margin-right: 10px;
+        }
+
+        /* ===== APP LAYOUT ===== */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 280px;
+            background: var(--gray-900);
+            min-height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 1000;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-header {
+            padding: 24px 24px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .sidebar-header .brand-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header .brand-text h3 {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .sidebar-header .brand-text span {
+            color: var(--gray-500);
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .sidebar-nav .nav-label {
+            color: var(--gray-600);
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 8px 12px 12px;
+        }
+
+        .sidebar-nav .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            border-radius: var(--radius);
+            color: var(--gray-400);
+            cursor: pointer;
+            transition: var(--transition);
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            position: relative;
+            margin-bottom: 2px;
+        }
+
+        .sidebar-nav .nav-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: white;
+        }
+
+        .sidebar-nav .nav-item.active {
+            background: rgba(99, 102, 241, 0.15);
+            color: white;
+        }
+
+        .sidebar-nav .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            bottom: 8px;
+            width: 3px;
+            background: var(--primary);
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-nav .nav-item i {
+            width: 20px;
+            font-size: 16px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .sidebar-nav .nav-item .badge {
+            margin-left: auto;
+            padding: 2px 10px;
+            background: rgba(99, 102, 241, 0.2);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .sidebar-footer {
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .sidebar-footer .user-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+        }
+
+        .sidebar-footer .user-card .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-footer .user-card .user-detail {
+            flex: 1;
+        }
+
+        .sidebar-footer .user-card .user-detail .name {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .sidebar-footer .user-card .user-detail .role {
+            color: var(--gray-500);
+            font-size: 12px;
+        }
+
+        .sidebar-footer .btn-logout {
+            width: 100%;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: var(--radius);
+            color: var(--danger);
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sidebar-footer .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+            background: var(--gray-50);
+        }
+
+        /* ===== TOP BAR ===== */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 500;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .topbar-left .btn-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-700);
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .topbar-left .page-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+            letter-spacing: -0.3px;
+        }
+
+        .topbar-left .page-title span {
+            color: var(--gray-500);
+            font-weight: 400;
+            font-size: 14px;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .topbar-right .datetime {
+            color: var(--gray-600);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .topbar-right .datetime i {
+            margin-right: 6px;
+            color: var(--primary);
+        }
+
+        .topbar-right .btn-refresh {
+            padding: 10px 18px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+        }
+
+        .topbar-right .btn-refresh:hover {
+            background: var(--primary-dark);
+            transform: scale(1.02);
+        }
+
+        .topbar-right .btn-refresh:active {
+            transform: scale(0.95);
+        }
+
+        .topbar-right .btn-refresh i {
+            transition: transform 0.6s;
+        }
+
+        .topbar-right .btn-refresh:hover i {
+            transform: rotate(180deg);
+        }
+
+        /* ===== CONTENT AREA ===== */
+        .content-area {
+            padding: 32px;
+        }
+
+        .page-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page-content.active {
+            display: block;
+        }
+
+        /* ===== DASHBOARD ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--gray-100);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .stat-card .stat-header .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .stat-card .stat-header .stat-icon.blue { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+        .stat-card .stat-header .stat-icon.green { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-card .stat-header .stat-icon.yellow { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-card .stat-header .stat-icon.red { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .stat-card .stat-header .stat-icon.purple { background: rgba(139, 92, 246, 0.1); color: var(--secondary); }
+
+        .stat-card .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--gray-900);
+            letter-spacing: -1px;
+        }
+
+        .stat-card .stat-label {
+            color: var(--gray-500);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .stat-card .stat-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .stat-card .stat-change.up { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-card .stat-change.down { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        /* ===== QUICK ACCESS ===== */
+        .quick-access-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin: 24px 0 32px;
+        }
+
+        .quick-access-item {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px 16px;
+            text-align: center;
+            border: 1px solid var(--gray-100);
+            transition: var(--transition);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .quick-access-item:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--primary);
+        }
+
+        .quick-access-item .icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 24px;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .quick-access-item:hover .icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .quick-access-item .label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-700);
+        }
+
+        /* ===== CHART ===== */
+        .chart-wrapper {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--gray-100);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+        }
+
+        .chart-wrapper .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-wrapper .chart-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .chart-wrapper .chart-header .chart-filters {
+            display: flex;
+            gap: 12px;
+        }
+
+        .chart-wrapper .chart-header .chart-filters select {
+            padding: 8px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            background: white;
+            font-family: inherit;
+            font-size: 13px;
+            color: var(--gray-700);
+            outline: none;
+        }
+
+        .chart-wrapper .chart-header .chart-filters select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        /* ===== TABLE ===== */
+        .table-wrapper {
+            background: white;
+            border-radius: var(--radius);
+            padding: 24px;
+            border: 1px solid var(--gray-100);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .table-wrapper .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .table-wrapper .table-toolbar .left {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .table-wrapper .table-toolbar .right {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .table-wrapper .table-toolbar .search-box {
+            position: relative;
+        }
+
+        .table-wrapper .table-toolbar .search-box input {
+            padding: 10px 16px 10px 40px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 14px;
+            outline: none;
+            transition: var(--transition);
+            background: var(--gray-50);
+            min-width: 220px;
+        }
+
+        .table-wrapper .table-toolbar .search-box input:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .table-wrapper .table-toolbar .search-box i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--gray-400);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--gray-200);
+            color: var(--gray-700);
+        }
+        .btn-outline:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-300);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .table-responsive table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .table-responsive table thead {
+            background: var(--gray-50);
+        }
+
+        .table-responsive table th {
+            padding: 14px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-600);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .table-responsive table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--gray-100);
+            color: var(--gray-700);
+        }
+
+        .table-responsive table tbody tr {
+            transition: var(--transition);
+        }
+
+        .table-responsive table tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .table-responsive .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-badge.hadir { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .status-badge.sakit { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .status-badge.izin { background: rgba(59, 130, 246, 0.1); color: var(--info); }
+        .status-badge.alpha { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        .table-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--gray-100);
+            margin-top: 16px;
+        }
+
+        .table-footer .info {
+            color: var(--gray-500);
+            font-size: 13px;
+        }
+
+        .table-footer .pagination {
+            display: flex;
+            gap: 4px;
+        }
+
+        .table-footer .pagination button {
+            padding: 8px 14px;
+            border: 1px solid var(--gray-200);
+            background: white;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+        }
+
+        .table-footer .pagination button:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .table-footer .pagination button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* ===== SCAN PAGE ===== */
+        .scan-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+        }
+
+        .scan-video-wrapper {
+            background: var(--gray-900);
+            border-radius: var(--radius);
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-video-wrapper video {
+            width: 100%;
+            border-radius: var(--radius);
+            background: #000;
+            min-height: 300px;
+            object-fit: cover;
+        }
+
+        .scan-video-wrapper .scan-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(99, 102, 241, 0.5);
+            border-radius: var(--radius);
+            pointer-events: none;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .scan-video-wrapper .scan-overlay .corner {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: var(--primary);
+            border-style: solid;
+            border-width: 0;
+        }
+
+        .scan-video-wrapper .scan-overlay .corner.tl {
+            top: -2px;
+            left: -2px;
+            border-top-width: 3px;
+            border-left-width: 3px;
+        }
+
+        .scan-video-wrapper .scan-overlay .corner.tr {
+            top: -2px;
+            right: -2px;
+            border-top-width: 3px;
+            border-right-width: 3px;
+        }
+
+        .scan-video-wrapper .scan-overlay .corner.bl {
+            bottom: -2px;
+            left: -2px;
+            border-bottom-width: 3px;
+            border-left-width: 3px;
+        }
+
+        .scan-video-wrapper .scan-overlay .corner.br {
+            bottom: -2px;
+            right: -2px;
+            border-bottom-width: 3px;
+            border-right-width: 3px;
+        }
+
+        .scan-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .scan-info {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .scan-info .info-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid var(--gray-100);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .scan-info .info-card .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--gray-700);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .scan-info .info-card .gps-location {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--gray-50);
+            border-radius: var(--radius);
+            font-size: 13px;
+            color: var(--gray-600);
+        }
+
+        .scan-info .info-card .gps-location i {
+            color: var(--primary);
+            font-size: 18px;
+        }
+
+        .scan-info .radio-group {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+        .scan-info .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .scan-info .radio-group input[type="radio"] {
+            accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* ===== MODAL ===== */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: var(--radius-lg);
+            max-width: 580px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 32px;
+            animation: slideUp 0.3s ease;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .modal-content .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .modal-content .modal-header h3 {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .modal-content .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: var(--gray-400);
+            cursor: pointer;
+            transition: var(--transition);
+            padding: 4px;
+        }
+
+        .modal-content .modal-close:hover {
+            color: var(--gray-700);
+            transform: rotate(90deg);
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 18px;
+        }
+
+        .modal-content .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .modal-content .form-group input,
+        .modal-content .form-group select,
+        .modal-content .form-group textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            font-family: inherit;
+            font-size: 14px;
+            transition: var(--transition);
+            outline: none;
+        }
+
+        .modal-content .form-group input:focus,
+        .modal-content .form-group select:focus,
+        .modal-content .form-group textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .modal-content .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        /* ===== TOAST ===== */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .toast {
+            padding: 16px 24px;
+            border-radius: var(--radius);
+            color: white;
+            font-weight: 500;
+            font-size: 14px;
+            box-shadow: var(--shadow-lg);
+            animation: slideInRight 0.4s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 420px;
+        }
+
+        .toast.success { background: var(--success); }
+        .toast.error { background: var(--danger); }
+        .toast.warning { background: var(--warning); }
+        .toast.info { background: var(--info); }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .scan-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .topbar-left .btn-toggle {
+                display: block;
+            }
+
+            .topbar {
+                padding: 12px 16px;
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .topbar-right .datetime {
+                display: none;
+            }
+
+            .content-area {
+                padding: 16px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-card .stat-value {
+                font-size: 24px;
+            }
+
+            .quick-access-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-wrapper {
+                padding: 16px;
+            }
+
+            .table-wrapper .table-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .table-wrapper .table-toolbar .left,
+            .table-wrapper .table-toolbar .right {
+                flex-wrap: wrap;
+            }
+
+            .table-wrapper .table-toolbar .search-box input {
+                min-width: 100%;
+            }
+
+            .modal-content {
+                padding: 20px;
+                margin: 10px;
+            }
+
+            .login-box {
+                padding: 32px 24px;
+            }
+
+            .scan-video-wrapper video {
+                min-height: 200px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .quick-access-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+
+            .quick-access-item {
+                padding: 16px 12px;
+            }
+
+            .quick-access-item .icon {
+                width: 44px;
+                height: 44px;
+                font-size: 18px;
+            }
+
+            .login-box .role-selector label {
+                font-size: 12px;
+                padding: 8px 12px;
+            }
+        }
+
+        /* ===== LOADING SKELETON ===== */
+        .skeleton {
+            background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: var(--radius);
+        }
+    </style>
 </head>
 <body>
-    <!-- Login Page -->
-    <div id="loginPage" class="page active">
-        <div class="login-container">
-            <div class="login-box">
-                <div class="login-header">
-                    <img src="images/logo-sekolah.gif" alt="Logo Sekolah" class="logo-gif">
-                    <h1>Aplikasi Presensi</h1>
-                    <h2>Sekolah SMK Negeri 1</h2>
-                </div>
-                <form id="loginForm">
-                    <div class="form-group">
-                        <label><i class="fas fa-user-graduate"></i> Username</label>
-                        <input type="text" id="username" placeholder="Masukkan NIS/NIP" required>
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-lock"></i> Password</label>
-                        <input type="password" id="password" placeholder="Masukkan Password" required>
-                    </div>
-                    <button type="submit" class="btn-login">
-                        <i class="fas fa-sign-in-alt"></i> Login
-                    </button>
-                    <div class="login-options">
-                        <span>Login sebagai:</span>
-                        <label><input type="radio" name="role" value="siswa" checked> Siswa</label>
-                        <label><input type="radio" name="role" value="guru"> Guru</label>
-                        <label><input type="radio" name="role" value="admin"> Admin</label>
-                    </div>
-                </form>
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="loginPage" class="page active login-page">
+    <div class="login-box">
+        <div class="logo-section">
+            <div class="logo-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h1>Presensi<span>App</span></h1>
+            <p>Sistem Presensi Sekolah Digital</p>
+        </div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Username / NIS</label>
+                <input type="text" id="username" placeholder="Masukkan username atau NIS" required>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-lock"></i> Password</label>
+                <input type="password" id="password" placeholder="Masukkan password" required>
+            </div>
+
+            <div class="role-selector">
+                <input type="radio" name="role" value="siswa" id="roleSiswa" checked>
+                <label for="roleSiswa"><i class="fas fa-user-graduate"></i> Siswa</label>
+
+                <input type="radio" name="role" value="guru" id="roleGuru">
+                <label for="roleGuru"><i class="fas fa-chalkboard-teacher"></i> Guru</label>
+
+                <input type="radio" name="role" value="admin" id="roleAdmin">
+                <label for="roleAdmin"><i class="fas fa-user-shield"></i> Admin</label>
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Masuk
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="mainApp" class="page app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-icon">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <div class="brand-text">
+                <h3>PresensiApp</h3>
+                <span>Sekolah SMK Negeri 1</span>
             </div>
         </div>
-    </div>
 
-    <!-- Main Dashboard -->
-    <div id="mainApp" class="page">
-        <div class="app-container">
-            <!-- Sidebar -->
-            <nav class="sidebar" id="sidebar">
-                <div class="sidebar-header">
-                    <img src="images/logo-mini.gif" alt="Logo" class="logo-mini">
-                    <h3>Presensi App</h3>
+        <nav class="sidebar-nav">
+            <div class="nav-label">Menu Utama</div>
+
+            <a class="nav-item active" data-page="dashboard">
+                <i class="fas fa-th-large"></i>
+                Dashboard
+            </a>
+            <a class="nav-item" data-page="data-siswa">
+                <i class="fas fa-users"></i>
+                Data Siswa
+                <span class="badge" id="siswaCount">0</span>
+            </a>
+            <a class="nav-item" data-page="data-guru">
+                <i class="fas fa-chalkboard-teacher"></i>
+                Data Guru
+            </a>
+            <a class="nav-item" data-page="laporan">
+                <i class="fas fa-file-alt"></i>
+                Laporan
+            </a>
+            <a class="nav-item" data-page="kelola-absen">
+                <i class="fas fa-clock"></i>
+                Kelola Absen
+            </a>
+            <a class="nav-item" data-page="scan-absen">
+                <i class="fas fa-qrcode"></i>
+                Scan Presensi
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="avatar" id="userAvatar">A</div>
+                <div class="user-detail">
+                    <div class="name" id="userName">User</div>
+                    <div class="role" id="userRole">Siswa</div>
                 </div>
-                <ul class="menu-list">
-                    <li class="menu-item active" data-page="dashboard">
-                        <i class="fas fa-th-large"></i> Dashboard
-                    </li>
-                    <li class="menu-item" data-page="data-siswa">
-                        <i class="fas fa-users"></i> Data Siswa
-                    </li>
-                    <li class="menu-item" data-page="data-guru">
-                        <i class="fas fa-chalkboard-teacher"></i> Data Guru
-                    </li>
-                    <li class="menu-item" data-page="laporan">
-                        <i class="fas fa-file-alt"></i> Laporan
-                    </li>
-                    <li class="menu-item" data-page="kelola-absen">
-                        <i class="fas fa-clock"></i> Kelola Absen
-                    </li>
-                    <li class="menu-item" data-page="scan-absen">
-                        <i class="fas fa-qrcode"></i> Scan Absensi
-                    </li>
-                </ul>
-                <div class="sidebar-footer">
-                    <div class="user-info" id="userInfo">
-                        <i class="fas fa-user-circle"></i>
-                        <span id="userName">User</span>
-                    </div>
-                    <button onclick="logout()" class="btn-logout">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
-                </div>
-            </nav>
-
-            <!-- Main Content -->
-            <main class="main-content">
-                <header class="top-bar">
-                    <div class="top-bar-left">
-                        <button id="toggleSidebar" class="btn-toggle">
-                            <i class="fas fa-bars"></i>
-                        </button>
-                        <h2 id="pageTitle">Dashboard</h2>
-                    </div>
-                    <div class="top-bar-right">
-                        <span id="currentDateTime"></span>
-                        <button onclick="refreshData()" class="btn-refresh">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                </header>
-
-                <div class="content-area">
-                    <!-- Dashboard Page -->
-                    <div id="dashboardPage" class="page-content active">
-                        <div class="dashboard-grid">
-                            <!-- Stats Cards -->
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-users"></i></div>
-                                <div class="stat-info">
-                                    <h3>Total Siswa</h3>
-                                    <span id="totalSiswa">0</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-check-circle text-success"></i></div>
-                                <div class="stat-info">
-                                    <h3>Hadir</h3>
-                                    <span id="totalHadir">0</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-bed text-warning"></i></div>
-                                <div class="stat-info">
-                                    <h3>Sakit</h3>
-                                    <span id="totalSakit">0</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-file-alt text-info"></i></div>
-                                <div class="stat-info">
-                                    <h3>Izin</h3>
-                                    <span id="totalIzin">0</span>
-                                </div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-icon"><i class="fas fa-times-circle text-danger"></i></div>
-                                <div class="stat-info">
-                                    <h3>Alpha</h3>
-                                    <span id="totalAlpha">0</span>
-                                </div>
-                            </div>
-
-                            <!-- Quick Access -->
-                            <div class="quick-access">
-                                <h3><i class="fas fa-bolt"></i> Akses Cepat</h3>
-                                <div class="quick-access-grid">
-                                    <button onclick="navigateTo('scan-absen')" class="quick-btn">
-                                        <i class="fas fa-qrcode fa-2x"></i>
-                                        <span>Scan Absensi</span>
-                                    </button>
-                                    <button onclick="navigateTo('data-siswa')" class="quick-btn">
-                                        <i class="fas fa-users fa-2x"></i>
-                                        <span>Data Siswa</span>
-                                    </button>
-                                    <button onclick="navigateTo('laporan')" class="quick-btn">
-                                        <i class="fas fa-file-alt fa-2x"></i>
-                                        <span>Laporan</span>
-                                    </button>
-                                    <button onclick="navigateTo('kelola-absen')" class="quick-btn">
-                                        <i class="fas fa-calendar-alt fa-2x"></i>
-                                        <span>Hari Libur</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Chart -->
-                            <div class="chart-container">
-                                <h3><i class="fas fa-chart-bar"></i> Statistik Kehadiran Bulan Ini</h3>
-                                <canvas id="kehadiranChart"></canvas>
-                            </div>
-
-                            <!-- Filters -->
-                            <div class="filters-container">
-                                <div class="filter-group">
-                                    <label>Kelas:</label>
-                                    <select id="filterKelas" onchange="updateDashboard()">
-                                        <option value="all">Semua Kelas</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group">
-                                    <label>Bulan:</label>
-                                    <select id="filterBulan" onchange="updateDashboard()">
-                                        <option value="0">Januari</option>
-                                        <option value="1">Februari</option>
-                                        <option value="2">Maret</option>
-                                        <option value="3">April</option>
-                                        <option value="4">Mei</option>
-                                        <option value="5">Juni</option>
-                                        <option value="6">Juli</option>
-                                        <option value="7">Agustus</option>
-                                        <option value="8">September</option>
-                                        <option value="9">Oktober</option>
-                                        <option value="10">November</option>
-                                        <option value="11">Desember</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Data Siswa Page -->
-                    <div id="dataSiswaPage" class="page-content">
-                        <div class="data-table-container">
-                            <div class="table-toolbar">
-                                <div class="toolbar-left">
-                                    <button onclick="tambahSiswa()" class="btn-primary">
-                                        <i class="fas fa-plus"></i> Tambah Siswa
-                                    </button>
-                                    <button onclick="refreshDataSiswa()" class="btn-secondary">
-                                        <i class="fas fa-sync-alt"></i> Refresh
-                                    </button>
-                                </div>
-                                <div class="toolbar-right">
-                                    <input type="text" id="searchSiswa" placeholder="Cari siswa..." onkeyup="filterSiswa()">
-                                    <select id="filterSiswaKelas" onchange="filterSiswa()">
-                                        <option value="all">Semua Kelas</option>
-                                    </select>
-                                    <select id="showEntries" onchange="updateSiswaTable()">
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="30">30</option>
-                                        <option value="40">40</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="table-responsive">
-                                <table id="siswaTable">
-                                    <thead>
-                                        <tr>
-                                            <th>No</th>
-                                            <th>NIS/NISN</th>
-                                            <th>Nama Lengkap</th>
-                                            <th>Kelas</th>
-                                            <th>Jenis Kelamin</th>
-                                            <th>Tanggal Lahir</th>
-                                            <th>Agama</th>
-                                            <th>Nama Ayah</th>
-                                            <th>Nama Ibu</th>
-                                            <th>No.HP</th>
-                                            <th>Alamat</th>
-                                            <th>Keterangan</th>
-                                            <th>Password</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="siswaTableBody">
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="table-footer">
-                                <span id="siswaInfo">Menampilkan 0 dari 0 data</span>
-                                <div class="pagination">
-                                    <button onclick="prevSiswaPage()"><i class="fas fa-chevron-left"></i></button>
-                                    <span id="siswaPageInfo">1</span>
-                                    <button onclick="nextSiswaPage()"><i class="fas fa-chevron-right"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Data Guru Page -->
-                    <div id="dataGuruPage" class="page-content">
-                        <div class="data-table-container">
-                            <div class="table-toolbar">
-                                <div class="toolbar-left">
-                                    <button onclick="tambahGuru()" class="btn-primary">
-                                        <i class="fas fa-plus"></i> + Tambah Guru
-                                    </button>
-                                    <button onclick="refreshDataGuru()" class="btn-secondary">
-                                        <i class="fas fa-sync-alt"></i> Refresh
-                                    </button>
-                                </div>
-                                <div class="toolbar-right">
-                                    <input type="text" id="searchGuru" placeholder="Cari username..." onkeyup="filterGuru()">
-                                    <select id="filterGuruKelas" onchange="filterGuru()">
-                                        <option value="all">Semua Kelas</option>
-                                    </select>
-                                    <select id="showGuruEntries" onchange="updateGuruTable()">
-                                        <option value="10">10</option>
-                                        <option value="20">20</option>
-                                        <option value="30">30</option>
-                                        <option value="40">40</option>
-                                        <option value="50">50</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="table-responsive">
-                                <table id="guruTable">
-                                    <thead>
-                                        <tr>
-                                            <th>No</th>
-                                            <th>Username</th>
-                                            <th>Guru Kelas</th>
-                                            <th>Password</th>
-                                            <th>Aksi</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="guruTableBody">
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div class="table-footer">
-                                <span id="guruInfo">Menampilkan 0 dari 0 data</span>
-                                <div class="pagination">
-                                    <button onclick="prevGuruPage()"><i class="fas fa-chevron-left"></i></button>
-                                    <span id="guruPageInfo">1</span>
-                                    <button onclick="nextGuruPage()"><i class="fas fa-chevron-right"></i></button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Laporan Page -->
-                    <div id="laporanPage" class="page-content">
-                        <div class="laporan-container">
-                            <h3><i class="fas fa-file-pdf"></i> Laporan Kehadiran</h3>
-                            <div class="laporan-filters">
-                                <div class="filter-group">
-                                    <label>Kelas:</label>
-                                    <select id="laporanKelas">
-                                        <option value="all">Semua Kelas</option>
-                                    </select>
-                                </div>
-                                <div class="filter-group">
-                                    <label>Bulan:</label>
-                                    <select id="laporanBulan">
-                                        <option value="0">Januari</option>
-                                        <option value="1">Februari</option>
-                                        <option value="2">Maret</option>
-                                        <option value="3">April</option>
-                                        <option value="4">Mei</option>
-                                        <option value="5">Juni</option>
-                                        <option value="6">Juli</option>
-                                        <option value="7">Agustus</option>
-                                        <option value="8">September</option>
-                                        <option value="9">Oktober</option>
-                                        <option value="10">November</option>
-                                        <option value="11">Desember</option>
-                                    </select>
-                                </div>
-                                <button onclick="generateLaporan()" class="btn-primary">
-                                    <i class="fas fa-file-export"></i> Generate Laporan
-                                </button>
-                                <button onclick="exportLaporan()" class="btn-success">
-                                    <i class="fas fa-download"></i> Export PDF
-                                </button>
-                            </div>
-                            <div id="laporanContent" class="laporan-content">
-                                <!-- Laporan akan ditampilkan disini -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Kelola Absen Page -->
-                    <div id="kelolaAbsenPage" class="page-content">
-                        <div class="kelola-absen-container">
-                            <h3><i class="fas fa-clock"></i> Pengaturan Jadwal</h3>
-                            <div class="jadwal-form">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Mata Pelajaran</label>
-                                        <input type="text" id="mapelInput" placeholder="Nama Mata Pelajaran">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Jam Datang</label>
-                                        <input type="time" id="jamDatang">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Jam Selesai</label>
-                                        <input type="time" id="jamSelesai">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Kelas</label>
-                                        <select id="jadwalKelas">
-                                            <option value="">Pilih Kelas</option>
-                                        </select>
-                                    </div>
-                                    <button onclick="tambahJadwal()" class="btn-primary">
-                                        <i class="fas fa-plus"></i> Tambah
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="jadwalList" class="jadwal-list">
-                                <!-- Daftar jadwal -->
-                            </div>
-
-                            <h3><i class="fas fa-calendar-times"></i> Hari Libur</h3>
-                            <div class="libur-form">
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label>Tanggal</label>
-                                        <input type="date" id="tanggalLibur">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Keterangan</label>
-                                        <input type="text" id="keteranganLibur" placeholder="Hari libur...">
-                                    </div>
-                                    <button onclick="tambahLibur()" class="btn-primary">
-                                        <i class="fas fa-plus"></i> Tambah
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="liburList" class="libur-list">
-                                <!-- Daftar hari libur -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Scan Absensi Page -->
-                    <div id="scanAbsenPage" class="page-content">
-                        <div class="scan-container">
-                            <h3><i class="fas fa-qrcode"></i> Scan Presensi Kehadiran</h3>
-                            <div class="scan-grid">
-                                <div class="scan-video">
-                                    <video id="video" autoplay playsinline></video>
-                                    <canvas id="canvas" style="display:none;"></canvas>
-                                    <div id="qrResult"></div>
-                                    <button onclick="startScan()" class="btn-primary">
-                                        <i class="fas fa-camera"></i> Mulai Scan
-                                    </button>
-                                    <button onclick="stopScan()" class="btn-danger">
-                                        <i class="fas fa-stop"></i> Stop
-                                    </button>
-                                </div>
-                                <div class="scan-info">
-                                    <div class="gps-info">
-                                        <i class="fas fa-map-marker-alt"></i>
-                                        <span id="gpsLocation">Mengambil lokasi...</span>
-                                    </div>
-                                    <div class="scan-result">
-                                        <h4>Hasil Scan:</h4>
-                                        <div id="scanResult"></div>
-                                    </div>
-                                    <div class="quick-presensi">
-                                        <h4>Input Manual:</h4>
-                                        <div class="presensi-radio">
-                                            <label><input type="radio" name="status" value="Hadir"> Hadir</label>
-                                            <label><input type="radio" name="status" value="Sakit"> Sakit</label>
-                                            <label><input type="radio" name="status" value="Izin"> Izin</label>
-                                            <label><input type="radio" name="status" value="Alpha"> Alpha</label>
-                                        </div>
-                                        <button onclick="selesaiSemua()" class="btn-success">
-                                            <i class="fas fa-check-double"></i> Jam Selesai Semua
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </main>
+            </div>
+            <button onclick="logout()" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Keluar
+            </button>
         </div>
-    </div>
+    </aside>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/siswa.js"></script>
-    <script src="js/guru.js"></script>
-    <script src="js/laporan.js"></script>
-    <script src="js/kelola-absen.js"></script>
-    <script src="js/scan-absen.js"></script>
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="btn-toggle" id="toggleSidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 class="page-title" id="pageTitle">Dashboard</h2>
+            </div>
+            <div class="topbar-right">
+                <span class="datetime">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="currentDateTime">Loading...</span>
+                </span>
+                <button onclick="refreshData()" class="btn-refresh">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <div class="content-area">
+            <!-- Dashboard -->
+            <div id="dashboardPage" class="page-content active">
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                        </div>
+                        <div class="stat-value" id="totalSiswa">0</div>
+                        <div class="stat-label">Total Siswa</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                        </div>
+                        <div class="stat-value" id="totalHadir">0</div>
+                        <div class="stat-label">Hadir Hari Ini</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon yellow"><i class="fas fa-bed"></i></div>
+                        </div>
+                        <div class="stat-value" id="totalSakit">0</div>
+                        <div class="stat-label">Sakit</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon purple"><i class="fas fa-file-alt"></i></div>
+                        </div>
+                        <div class="stat-value" id="totalIzin">0</div>
+                        <div class="stat-label">Izin</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon red"><i class="fas fa-times-circle"></i></div>
+                        </div>
+                        <div class="stat-value" id="totalAlpha">0</div>
+                        <div class="stat-label">Alpha</div>
+                    </div>
+                </div>
+
+                <!-- Quick Access -->
+                <div class="quick-access-grid">
+                    <div class="quick-access-item" onclick="navigateTo('scan-absen')">
+                        <div class="icon"><i class="fas fa-qrcode"></i></div>
+                        <div class="label">Scan Absensi</div>
+                    </div>
+                    <div class="quick-access-item" onclick="navigateTo('data-siswa')">
+                        <div class="icon"><i class="fas fa-users"></i></div>
+                        <div class="label">Data Siswa</div>
+                    </div>
+                    <div class="quick-access-item" onclick="navigateTo('laporan')">
+                        <div class="icon"><i class="fas fa-file-alt"></i></div>
+                        <div class="label">Laporan</div>
+                    </div>
+                    <div class="quick-access-item" onclick="navigateTo('kelola-absen')">
+                        <div class="icon"><i class="fas fa-calendar-times"></i></div>
+                        <div class="label">Hari Libur</div>
+                    </div>
+                </div>
+
+                <!-- Chart -->
+                <div class="chart-wrapper">
+                    <div class="chart-header">
+                        <h3><i class="fas fa-chart-bar" style="color:var(--primary);margin-right:8px;"></i> Statistik Kehadiran Bulan Ini</h3>
+                        <div class="chart-filters">
+                            <select id="filterBulan" onchange="updateDashboard()">
+                                <option value="0">Januari</option>
+                                <option value="1">Februari</option>
+                                <option value="2">Maret</option>
+                                <option value="3">April</option>
+                                <option value="4">Mei</option>
+                                <option value="5">Juni</option>
+                                <option value="6">Juli</option>
+                                <option value="7">Agustus</option>
+                                <option value="8">September</option>
+                                <option value="9">Oktober</option>
+                                <option value="10">November</option>
+                                <option value="11">Desember</option>
+                            </select>
+                            <select id="filterKelas" onchange="updateDashboard()">
+                                <option value="all">Semua Kelas</option>
+                            </select>
+                        </div>
+                    </div>
+                    <canvas id="kehadiranChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <!-- Data Siswa -->
+            <div id="dataSiswaPage" class="page-content">
+                <div class="table-wrapper">
+                    <div class="table-toolbar">
+                        <div class="left">
+                            <button class="btn btn-primary" onclick="tambahSiswa()">
+                                <i class="fas fa-plus"></i> Tambah Siswa
+                            </button>
+                            <button class="btn btn-outline" onclick="refreshDataSiswa()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="right">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchSiswa" placeholder="Cari siswa..." onkeyup="filterSiswa()">
+                            </div>
+                            <select id="filterSiswaKelas" onchange="filterSiswa()" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;">
+                                <option value="all">Semua Kelas</option>
+                            </select>
+                            <select id="showEntries" onchange="updateSiswaTable()" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>NIS</th>
+                                    <th>Nama</th>
+                                    <th>Kelas</th>
+                                    <th>JK</th>
+                                    <th>TTL</th>
+                                    <th>Agama</th>
+                                    <th>Ortu</th>
+                                    <th>HP</th>
+                                    <th>Alamat</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="siswaTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-footer">
+                        <span class="info" id="siswaInfo">Menampilkan 0 dari 0 data</span>
+                        <div class="pagination">
+                            <button onclick="prevSiswaPage()"><i class="fas fa-chevron-left"></i></button>
+                            <button class="active" id="siswaPageInfo">1</button>
+                            <button onclick="nextSiswaPage()"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Guru -->
+            <div id="dataGuruPage" class="page-content">
+                <div class="table-wrapper">
+                    <div class="table-toolbar">
+                        <div class="left">
+                            <button class="btn btn-primary" onclick="tambahGuru()">
+                                <i class="fas fa-plus"></i> Tambah Guru
+                            </button>
+                            <button class="btn btn-outline" onclick="refreshDataGuru()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div class="right">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="searchGuru" placeholder="Cari guru..." onkeyup="filterGuru()">
+                            </div>
+                            <select id="filterGuruKelas" onchange="filterGuru()" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;">
+                                <option value="all">Semua Kelas</option>
+                            </select>
+                            <select id="showGuruEntries" onchange="updateGuruTable()" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;">
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Username</th>
+                                    <th>Kelas</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="guruTableBody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-footer">
+                        <span class="info" id="guruInfo">Menampilkan 0 dari 0 data</span>
+                        <div class="pagination">
+                            <button onclick="prevGuruPage()"><i class="fas fa-chevron-left"></i></button>
+                            <button class="active" id="guruPageInfo">1</button>
+                            <button onclick="nextGuruPage()"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Laporan -->
+            <div id="laporanPage" class="page-content">
+                <div class="table-wrapper">
+                    <h3 style="margin-bottom:20px;"><i class="fas fa-file-pdf" style="color:var(--danger);margin-right:10px;"></i> Laporan Kehadiran</h3>
+
+                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding:20px;background:var(--gray-50);border-radius:var(--radius);">
+                        <select id="laporanKelas" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;flex:1;min-width:150px;">
+                            <option value="all">Semua Kelas</option>
+                        </select>
+                        <select id="laporanBulan" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;flex:1;min-width:150px;">
+                            <option value="0">Januari</option>
+                            <option value="1">Februari</option>
+                            <option value="2">Maret</option>
+                            <option value="3">April</option>
+                            <option value="4">Mei</option>
+                            <option value="5">Juni</option>
+                            <option value="6">Juli</option>
+                            <option value="7">Agustus</option>
+                            <option value="8">September</option>
+                            <option value="9">Oktober</option>
+                            <option value="10">November</option>
+                            <option value="11">Desember</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="generateLaporan()">
+                            <i class="fas fa-file-export"></i> Generate
+                        </button>
+                        <button class="btn btn-success" onclick="exportLaporan()">
+                            <i class="fas fa-download"></i> Export PDF
+                        </button>
+                    </div>
+
+                    <div id="laporanContent" style="padding:20px;background:var(--gray-50);border-radius:var(--radius);min-height:200px;">
+                        <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
+                            <i class="fas fa-file-alt" style="font-size:48px;display:block;margin-bottom:12px;"></i>
+                            Silakan pilih filter dan klik Generate
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kelola Absen -->
+            <div id="kelolaAbsenPage" class="page-content">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+                    <div class="table-wrapper">
+                        <h3 style="margin-bottom:20px;"><i class="fas fa-clock" style="color:var(--primary);margin-right:10px;"></i> Jadwal Mata Pelajaran</h3>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;padding:16px;background:var(--gray-50);border-radius:var(--radius);">
+                            <input type="text" id="mapelInput" placeholder="Mata Pelajaran" style="flex:1;min-width:120px;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;outline:none;">
+                            <input type="time" id="jamDatang" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;outline:none;">
+                            <input type="time" id="jamSelesai" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;outline:none;">
+                            <select id="jadwalKelas" style="padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;background:white;outline:none;">
+                                <option value="">Kelas</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="tambahJadwal()"><i class="fas fa-plus"></i> Tambah</button>
+                        </div>
+
+                        <div id="jadwalList" style="overflow-x:auto;"></div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <h3 style="margin-bottom:20px;"><i class="fas fa-calendar-times" style="color:var(--danger);margin-right:10px;"></i> Hari Libur</h3>
+
+                        <div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px;padding:16px;background:var(--gray-50);border-radius:var(--radius);">
+                            <input type="date" id="tanggalLibur" style="flex:1;min-width:120px;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;outline:none;">
+                            <input type="text" id="keteranganLibur" placeholder="Keterangan" style="flex:1;min-width:150px;padding:10px 14px;border:1px solid var(--gray-200);border-radius:var(--radius);font-family:inherit;outline:none;">
+                            <button class="btn btn-primary" onclick="tambahLibur()"><i class="fas fa-plus"></i> Tambah</button>
+                        </div>
+
+                        <div id="liburList" style="overflow-x:auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scan Absensi -->
+            <div id="scanAbsenPage" class="page-content">
+                <div class="scan-grid">
+                    <div>
+                        <div class="scan-video-wrapper">
+                            <video id="video" autoplay playsinline></video>
+                            <canvas id="canvas" style="display:none;"></canvas>
+                            <div class="scan-overlay">
+                                <div class="corner tl"></div>
+                                <div class="corner tr"></div>
+                                <div class="corner bl"></div>
+                                <div class="corner br"></div>
+                            </div>
+                        </div>
+                        <div class="scan-controls">
+                            <button class="btn btn-primary" onclick="startScan()">
+                                <i class="fas fa-camera"></i> Mulai Scan
+                            </button>
+                            <button class="btn btn-danger" onclick="stopScan()">
+                                <i class="fas fa-stop"></i> Stop
+                            </button>
+                            <button class="btn btn-outline" onclick="scanFromImage()">
+                                <i class="fas fa-image"></i> Upload QR
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scan-info">
+                        <div class="info-card">
+                            <div class="card-title"><i class="fas fa-map-marker-alt" style="color:var(--primary);"></i> Lokasi GPS</div>
+                            <div class="gps-location">
+                                <i class="fas fa-satellite"></i>
+                                <span id="gpsLocation">Mengambil lokasi...</span>
+                            </div>
+                        </div>
+
+                        <div class="info-card">
+                            <div class="card-title"><i class="fas fa-qrcode" style="color:var(--primary);"></i> Hasil Scan</div>
+                            <div id="scanResult" style="min-height:80px;padding:12px;background:var(--gray-50);border-radius:var(--radius);">
+                                <p style="color:var(--gray-400);text-align:center;font-size:13px;">Belum ada scan</p>
+                            </div>
+                        </div>
+
+                        <div class="info-card">
+                            <div class="card-title"><i class="fas fa-hand-pointer" style="color:var(--primary);"></i> Presensi Manual</div>
+                            <div class="radio-group">
+                                <label><input type="radio" name="status" value="Hadir" checked> <span style="color:var(--success);">Hadir</span></label>
+                                <label><input type="radio" name="status" value="Sakit"> <span style="color:var(--warning);">Sakit</span></label>
+                                <label><input type="radio" name="status" value="Izin"> <span style="color:var(--info);">Izin</span></label>
+                                <label><input type="radio" name="status" value="Alpha"> <span style="color:var(--danger);">Alpha</span></label>
+                            </div>
+                            <button class="btn btn-success" onclick="selesaiSemua()" style="width:100%;justify-content:center;margin-top:8px;">
+                                <i class="fas fa-check-double"></i> Selesai Semua
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
+
+<script>
+// ============================================================
+// APP STATE
+// ============================================================
+let currentUser = null;
+let currentRole = null;
+let allSiswa = [];
+let allGuru = [];
+let allAbsensi = [];
+let allJadwal = [];
+let allLibur = [];
+let chartInstance = null;
+let scanStream = null;
+let scanActive = false;
+
+// Siswa pagination
+let siswaData = [];
+let siswaCurrentPage = 1;
+let siswaPerPage = 10;
+
+// Guru pagination
+let guruData = [];
+let guruCurrentPage = 1;
+let guruPerPage = 10;
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Set default bulan
+    const now = new Date();
+    document.getElementById('filterBulan').value = now.getMonth();
+    document.getElementById('laporanBulan').value = now.getMonth();
+
+    // Event listeners
+    document.getElementById('loginForm').addEventListener('submit', handleLogin);
+    document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
+
+    // Menu navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.dataset.page;
+            navigateTo(page);
+        });
+    });
+
+    // Update time
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+});
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+}
+
+function navigateTo(page) {
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(m => m.classList.remove('active'));
+
+    // Show selected page
+    const pageMap = {
+        'dashboard': 'dashboardPage',
+        'data-siswa': 'dataSiswaPage',
+        'data-guru': 'dataGuruPage',
+        'laporan': 'laporanPage',
+        'kelola-absen': 'kelolaAbsenPage',
+        'scan-absen': 'scanAbsenPage'
+    };
+
+    if (pageMap[page]) {
+        document.getElementById(pageMap[page]).classList.add('active');
+        const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+        if (navItem) navItem.classList.add('active');
+        document.getElementById('pageTitle').textContent = navItem ? navItem.textContent.trim() : page;
+    }
+
+    // Tutup sidebar di mobile
+    if (window.innerWidth <= 768) {
+        document.getElementById('sidebar').classList.remove('open');
+    }
+}
+
+function updateDateTime() {
+    const now = new Date();
+    const options = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    };
+    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
+}
+
+function refreshData() {
+    showToast('Memuat data...', 'info');
+    if (currentRole === 'admin' || currentRole === 'guru') {
+        loadAllData();
+    } else if (currentRole === 'siswa') {
+        loadSiswaData();
+    }
+}
+
+// ============================================================
+// TOAST NOTIFICATION
+// ============================================================
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        setTimeout(() => toast.remove(), 400);
+    }, 3000);
+}
+
+// ============================================================
+// LOGIN SYSTEM
+// ============================================================
+async function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const role = document.querySelector('input[name="role"]:checked').value;
+
+    if (!username || !password) {
+        showToast('Username dan password harus diisi!', 'error');
+        return;
+    }
+
+    try {
+        const user = await validateUser(username, password, role);
+        if (user) {
+            currentUser = user;
+            currentRole = role;
+            document.getElementById('userName').textContent = user.nama || username;
+            document.getElementById('userAvatar').textContent = (user.nama || username).charAt(0).toUpperCase();
+            document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+
+            document.getElementById('loginPage').classList.remove('active');
+            document.getElementById('mainApp').classList.add('active');
+
+            // Adjust menu by role
+            adjustMenuByRole(role);
+
+            // Load data
+            if (role === 'admin' || role === 'guru') {
+                loadAllData();
+            } else {
+                loadSiswaData();
+            }
+
+            showToast(`Selamat datang ${user.nama || username}!`, 'success');
+        } else {
+            showToast('Username atau password salah!', 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+function logout() {
+    if (confirm('Apakah Anda yakin ingin keluar?')) {
+        currentUser = null;
+        currentRole = null;
+        document.getElementById('mainApp').classList.remove('active');
+        document.getElementById('loginPage').classList.add('active');
+        document.getElementById('loginForm').reset();
+        showToast('Anda telah keluar', 'info');
+    }
+}
+
+function validateUser(username, password, role) {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            // Demo users - in real app, validate against spreadsheet
+            const users = {
+                'admin': { nama: 'Admin Sekolah', password: 'admin123' },
+                'guru': { nama: 'Guru Matematika', password: 'guru123' },
+                'siswa': { nama: 'Ahmad Fauzi', password: 'siswa123' }
+            };
+
+            if (users[username] && users[username].password === password) {
+                resolve({ nama: users[username].nama, username });
+            } else {
+                resolve(null);
+            }
+        }, 500);
+    });
+}
+
+function adjustMenuByRole(role) {
+    const items = document.querySelectorAll('.nav-item');
+    items.forEach(item => {
+        const page = item.dataset.page;
+        if (role === 'siswa') {
+            const allowed = ['dashboard', 'scan-absen'];
+            item.style.display = allowed.includes(page) ? 'flex' : 'none';
+        } else {
+            item.style.display = 'flex';
+        }
+    });
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function loadDashboard() {
+    updateStats();
+    updateChart();
+    updateFilters();
+}
+
+function updateStats() {
+    const total = allSiswa.length || 0;
+    const hadir = allAbsensi.filter(a => a.status === 'Hadir').length || 0;
+    const sakit = allAbsensi.filter(a => a.status === 'Sakit').length || 0;
+    const izin = allAbsensi.filter(a => a.status === 'Izin').length || 0;
+    const alpha = allAbsensi.filter(a => a.status === 'Alpha').length || 0;
+
+    document.getElementById('totalSiswa').textContent = total;
+    document.getElementById('totalHadir').textContent = hadir;
+    document.getElementById('totalSakit').textContent = sakit;
+    document.getElementById('totalIzin').textContent = izin;
+    document.getElementById('totalAlpha').textContent = alpha;
+    document.getElementById('siswaCount').textContent = total;
+}
+
+function updateChart() {
+    const ctx = document.getElementById('kehadiranChart').getContext('2d');
+
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    // Demo data - in real app, load from spreadsheet
+    const data = {
+        labels: ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'],
+        datasets: [
+            {
+                label: 'Hadir',
+                data: [45, 48, 42, 50],
+                backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                borderColor: '#10b981',
+                borderWidth: 2,
+                borderRadius: 4
+            },
+            {
+                label: 'Sakit',
+                data: [5, 3, 8, 4],
+                backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                borderColor: '#f59e0b',
+                borderWidth: 2,
+                borderRadius: 4
+            },
+            {
+                label: 'Izin',
+                data: [8, 10, 6, 7],
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderColor: '#3b82f6',
+                borderWidth: 2,
+                borderRadius: 4
+            },
+            {
+                label: 'Alpha',
+                data: [2, 4, 3, 1],
+                backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                borderColor: '#ef4444',
+                borderWidth: 2,
+                borderRadius: 4
+            }
+        ]
+    };
+
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: data,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0,0,0,0.05)'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+}
+
+function updateFilters() {
+    const kelasSet = new Set(allSiswa.map(s => s.kelas).filter(k => k));
+    const selects = ['filterKelas', 'filterSiswaKelas', 'filterGuruKelas', 'laporanKelas', 'jadwalKelas'];
+
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        const currentValue = select.value;
+        select.innerHTML = '<option value="all">Semua Kelas</option>';
+        kelasSet.forEach(kelas => {
+            const option = document.createElement('option');
+            option.value = kelas;
+            option.textContent = kelas;
+            select.appendChild(option);
+        });
+        if (currentValue) select.value = currentValue;
+    });
+}
+
+function updateDashboard() {
+    loadDashboard();
+}
+
+// ============================================================
+// DATA SISWA
+// ============================================================
+function loadSiswaData() {
+    // Demo data - in real app, load from spreadsheet
+    siswaData = [
+        { nis: '001', nama: 'Ahmad Fauzi', kelas: 'XII RPL 1', jk: 'L', tglLahir: '2005-01-15', agama: 'Islam', ayah: 'Budi', ibu: 'Siti', hp: '081234567890', alamat: 'Jl. Merdeka No.1', keterangan: 'Aktif', password: 'siswa123' },
+        { nis: '002', nama: 'Siti Aminah', kelas: 'XII RPL 1', jk: 'P', tglLahir: '2005-03-20', agama: 'Islam', ayah: 'Ahmad', ibu: 'Fatimah', hp: '081234567891', alamat: 'Jl. Sudirman No.2', keterangan: 'Aktif', password: 'siswa123' },
+        { nis: '003', nama: 'Budi Santoso', kelas: 'XII RPL 2', jk: 'L', tglLahir: '2004-12-10', agama: 'Kristen', ayah: 'Johanes', ibu: 'Maria', hp: '081234567892', alamat: 'Jl. Diponegoro No.3', keterangan: 'Aktif', password: 'siswa123' },
+        { nis: '004', nama: 'Dewi Lestari', kelas: 'XII RPL 2', jk: 'P', tglLahir: '2005-07-08', agama: 'Islam', ayah: 'Slamet', ibu: 'Rina', hp: '081234567893', alamat: 'Jl. Pahlawan No.4', keterangan: 'Aktif', password: 'siswa123' },
+        { nis: '005', nama: 'Eko Prasetyo', kelas: 'XII MM 1', jk: 'L', tglLahir: '2005-09-12', agama: 'Islam', ayah: 'Heru', ibu: 'Ani', hp: '081234567894', alamat: 'Jl. Pendidikan No.5', keterangan: 'Aktif', password: 'siswa123' },
+    ];
+    allSiswa = siswaData;
+    updateSiswaTable();
+    updateFilters();
+}
+
+function updateSiswaTable() {
+    const search = document.getElementById('searchSiswa').value.toLowerCase();
+    const kelasFilter = document.getElementById('filterSiswaKelas').value;
+    siswaPerPage = parseInt(document.getElementById('showEntries').value);
+
+    let filtered = siswaData.filter(s => {
+        const matchSearch = s.nama.toLowerCase().includes(search) || s.nis.includes(search);
+        const matchKelas = kelasFilter === 'all' || s.kelas === kelasFilter;
+        return matchSearch && matchKelas;
+    });
+
+    const start = (siswaCurrentPage - 1) * siswaPerPage;
+    const end = start + siswaPerPage;
+    const pageData = filtered.slice(start, end);
+
+    const tbody = document.getElementById('siswaTableBody');
+    tbody.innerHTML = '';
+
+    if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-inbox" style="font-size:32px;display:block;margin-bottom:8px;"></i>Tidak ada data siswa</td></tr>';
+        return;
+    }
+
+    pageData.forEach((s, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${start + i + 1}</td>
+            <td><strong>${s.nis}</strong></td>
+            <td>${s.nama}</td>
+            <td><span style="background:var(--gray-100);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${s.kelas}</span></td>
+            <td>${s.jk}</td>
+            <td>${s.tglLahir}</td>
+            <td>${s.agama}</td>
+            <td>${s.ayah} & ${s.ibu}</td>
+            <td>${s.hp}</td>
+            <td style="max-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${s.alamat}</td>
+            <td><span class="status-badge hadir">${s.keterangan}</span></td>
+            <td>
+                <button onclick="editSiswa('${s.nis}')" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></button>
+                <button onclick="hapusSiswa('${s.nis}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('siswaInfo').textContent =
+        `Menampilkan ${start + 1} - ${Math.min(end, filtered.length)} dari ${filtered.length} data`;
+    document.getElementById('siswaPageInfo').textContent =
+        `${siswaCurrentPage} dari ${Math.ceil(filtered.length / siswaPerPage) || 1}`;
+}
+
+function filterSiswa() {
+    siswaCurrentPage = 1;
+    updateSiswaTable();
+}
+
+function refreshDataSiswa() {
+    loadSiswaData();
+    showToast('Data siswa berhasil diperbarui', 'success');
+}
+
+function tambahSiswa() {
+    showModal('Tambah Siswa', `
+        <form id="formTambahSiswa">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label>NIS/NISN</label>
+                    <input type="text" id="tNis" required>
+                </div>
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="tNama" required>
+                </div>
+                <div class="form-group">
+                    <label>Kelas</label>
+                    <input type="text" id="tKelas" required>
+                </div>
+                <div class="form-group">
+                    <label>Jenis Kelamin</label>
+                    <select id="tJk">
+                        <option value="L">Laki-laki</option>
+                        <option value="P">Perempuan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Lahir</label>
+                    <input type="date" id="tTglLahir">
+                </div>
+                <div class="form-group">
+                    <label>Agama</label>
+                    <input type="text" id="tAgama">
+                </div>
+                <div class="form-group">
+                    <label>Nama Ayah</label>
+                    <input type="text" id="tAyah">
+                </div>
+                <div class="form-group">
+                    <label>Nama Ibu</label>
+                    <input type="text" id="tIbu">
+                </div>
+                <div class="form-group">
+                    <label>No.HP</label>
+                    <input type="text" id="tHp">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="tPassword" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Alamat</label>
+                <textarea id="tAlamat"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Keterangan</label>
+                <input type="text" id="tKeterangan" value="Aktif">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Simpan Siswa</button>
+        </form>
+    `);
+
+    document.getElementById('formTambahSiswa').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const data = {
+            nis: document.getElementById('tNis').value,
+            nama: document.getElementById('tNama').value,
+            kelas: document.getElementById('tKelas').value,
+            jk: document.getElementById('tJk').value,
+            tglLahir: document.getElementById('tTglLahir').value,
+            agama: document.getElementById('tAgama').value,
+            ayah: document.getElementById('tAyah').value,
+            ibu: document.getElementById('tIbu').value,
+            hp: document.getElementById('tHp').value,
+            alamat: document.getElementById('tAlamat').value,
+            keterangan: document.getElementById('tKeterangan').value,
+            password: document.getElementById('tPassword').value
+        };
+
+        siswaData.push(data);
+        allSiswa = siswaData;
+        updateSiswaTable();
+        updateFilters();
+        closeModal();
+        showToast('Siswa berhasil ditambahkan', 'success');
+    });
+}
+
+function editSiswa(nis) {
+    const siswa = siswaData.find(s => s.nis === nis);
+    if (!siswa) {
+        showToast('Siswa tidak ditemukan', 'error');
+        return;
+    }
+
+    showModal('Edit Siswa', `
+        <form id="formEditSiswa">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div class="form-group">
+                    <label>NIS/NISN</label>
+                    <input type="text" id="eNis" value="${siswa.nis}" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="eNama" value="${siswa.nama}" required>
+                </div>
+                <div class="form-group">
+                    <label>Kelas</label>
+                    <input type="text" id="eKelas" value="${siswa.kelas}" required>
+                </div>
+                <div class="form-group">
+                    <label>Jenis Kelamin</label>
+                    <select id="eJk">
+                        <option value="L" ${siswa.jk === 'L' ? 'selected' : ''}>Laki-laki</option>
+                        <option value="P" ${siswa.jk === 'P' ? 'selected' : ''}>Perempuan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Lahir</label>
+                    <input type="date" id="eTglLahir" value="${siswa.tglLahir}">
+                </div>
+                <div class="form-group">
+                    <label>Agama</label>
+                    <input type="text" id="eAgama" value="${siswa.agama}">
+                </div>
+                <div class="form-group">
+                    <label>Nama Ayah</label>
+                    <input type="text" id="eAyah" value="${siswa.ayah}">
+                </div>
+                <div class="form-group">
+                    <label>Nama Ibu</label>
+                    <input type="text" id="eIbu" value="${siswa.ibu}">
+                </div>
+                <div class="form-group">
+                    <label>No.HP</label>
+                    <input type="text" id="eHp" value="${siswa.hp}">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="ePassword" value="${siswa.password}" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Alamat</label>
+                <textarea id="eAlamat">${siswa.alamat}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Keterangan</label>
+                <input type="text" id="eKeterangan" value="${siswa.keterangan}">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Update Siswa</button>
+        </form>
+    `);
+
+    document.getElementById('formEditSiswa').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const index = siswaData.findIndex(s => s.nis === nis);
+        if (index !== -1) {
+            siswaData[index] = {
+                nis: document.getElementById('eNis').value,
+                nama: document.getElementById('eNama').value,
+                kelas: document.getElementById('eKelas').value,
+                jk: document.getElementById('eJk').value,
+                tglLahir: document.getElementById('eTglLahir').value,
+                agama: document.getElementById('eAgama').value,
+                ayah: document.getElementById('eAyah').value,
+                ibu: document.getElementById('eIbu').value,
+                hp: document.getElementById('eHp').value,
+                alamat: document.getElementById('eAlamat').value,
+                keterangan: document.getElementById('eKeterangan').value,
+                password: document.getElementById('ePassword').value
+            };
+            allSiswa = siswaData;
+            updateSiswaTable();
+            updateFilters();
+            closeModal();
+            showToast('Data siswa berhasil diupdate', 'success');
+        }
+    });
+}
+
+function hapusSiswa(nis) {
+    if (confirm(`Yakin hapus siswa dengan NIS ${nis}?`)) {
+        siswaData = siswaData.filter(s => s.nis !== nis);
+        allSiswa = siswaData;
+        updateSiswaTable();
+        updateFilters();
+        showToast('Siswa berhasil dihapus', 'success');
+    }
+}
+
+function prevSiswaPage() {
+    if (siswaCurrentPage > 1) {
+        siswaCurrentPage--;
+        updateSiswaTable();
+    }
+}
+
+function nextSiswaPage() {
+    const totalPages = Math.ceil(siswaData.length / siswaPerPage);
+    if (siswaCurrentPage < totalPages) {
+        siswaCurrentPage++;
+        updateSiswaTable();
+    }
+}
+
+// ============================================================
+// DATA GURU
+// ============================================================
+function loadGuruData() {
+    guruData = [
+        { id: 'G001', username: 'guru01', kelas: 'XII RPL 1', password: 'guru123' },
+        { id: 'G002', username: 'guru02', kelas: 'XII RPL 2', password: 'guru123' },
+        { id: 'G003', username: 'guru03', kelas: 'XII MM 1', password: 'guru123' },
+    ];
+    allGuru = guruData;
+    updateGuruTable();
+}
+
+function updateGuruTable() {
+    const search = document.getElementById('searchGuru').value.toLowerCase();
+    const kelasFilter = document.getElementById('filterGuruKelas').value;
+    guruPerPage = parseInt(document.getElementById('showGuruEntries').value);
+
+    let filtered = guruData.filter(g => {
+        const matchSearch = g.username.toLowerCase().includes(search);
+        const matchKelas = kelasFilter === 'all' || g.kelas === kelasFilter;
+        return matchSearch && matchKelas;
+    });
+
+    const start = (guruCurrentPage - 1) * guruPerPage;
+    const end = start + guruPerPage;
+    const pageData = filtered.slice(start, end);
+
+    const tbody = document.getElementById('guruTableBody');
+    tbody.innerHTML = '';
+
+    if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--gray-400);"><i class="fas fa-inbox" style="font-size:32px;display:block;margin-bottom:8px;"></i>Tidak ada data guru</td></tr>';
+        return;
+    }
+
+    pageData.forEach((g, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${start + i + 1}</td>
+            <td><strong>${g.username}</strong></td>
+            <td><span style="background:var(--gray-100);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${g.kelas || '-'}</span></td>
+            <td>
+                <button onclick="editGuru('${g.id}')" class="btn btn-warning btn-sm"><i class="fas fa-edit"></i></button>
+                <button onclick="hapusGuru('${g.id}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById('guruInfo').textContent =
+        `Menampilkan ${start + 1} - ${Math.min(end, filtered.length)} dari ${filtered.length} data`;
+    document.getElementById('guruPageInfo').textContent =
+        `${guruCurrentPage} dari ${Math.ceil(filtered.length / guruPerPage) || 1}`;
+}
+
+function filterGuru() {
+    guruCurrentPage = 1;
+    updateGuruTable();
+}
+
+function refreshDataGuru() {
+    loadGuruData();
+    showToast('Data guru berhasil diperbarui', 'success');
+}
+
+function tambahGuru() {
+    showModal('Tambah Guru', `
+        <form id="formTambahGuru">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="tGuruUsername" required>
+            </div>
+            <div class="form-group">
+                <label>Guru Kelas</label>
+                <input type="text" id="tGuruKelas">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="tGuruPassword" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Simpan Guru</button>
+        </form>
+    `);
+
+    document.getElementById('formTambahGuru').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const data = {
+            id: 'G' + String(guruData.length + 1).padStart(3, '0'),
+            username: document.getElementById('tGuruUsername').value,
+            kelas: document.getElementById('tGuruKelas').value,
+            password: document.getElementById('tGuruPassword').value
+        };
+
+        guruData.push(data);
+        allGuru = guruData;
+        updateGuruTable();
+        closeModal();
+        showToast('Guru berhasil ditambahkan', 'success');
+    });
+}
+
+function editGuru(id) {
+    const guru = guruData.find(g => g.id === id);
+    if (!guru) {
+        showToast('Guru tidak ditemukan', 'error');
+        return;
+    }
+
+    showModal('Edit Guru', `
+        <form id="formEditGuru">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="eGuruUsername" value="${guru.username}" required>
+            </div>
+            <div class="form-group">
+                <label>Guru Kelas</label>
+                <input type="text" id="eGuruKelas" value="${guru.kelas || ''}">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="eGuruPassword" value="${guru.password}" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">Update Guru</button>
+        </form>
+    `);
+
+    document.getElementById('formEditGuru').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const index = guruData.findIndex(g => g.id === id);
+        if (index !== -1) {
+            guruData[index] = {
+                id: id,
+                username: document.getElementById('eGuruUsername').value,
+                kelas: document.getElementById('eGuruKelas').value,
+                password: document.getElementById('eGuruPassword').value
+            };
+            allGuru = guruData;
+            updateGuruTable();
+            closeModal();
+            showToast('Data guru berhasil diupdate', 'success');
+        }
+    });
+}
+
+function hapusGuru(id) {
+    if (confirm('Yakin hapus guru ini?')) {
+        guruData = guruData.filter(g => g.id !== id);
+        allGuru = guruData;
+        updateGuruTable();
+        showToast('Guru berhasil dihapus', 'success');
+    }
+}
+
+function prevGuruPage() {
+    if (guruCurrentPage > 1) {
+        guruCurrentPage--;
+        updateGuruTable();
+    }
+}
+
+function nextGuruPage() {
+    const totalPages = Math.ceil(guruData.length / guruPerPage);
+    if (guruCurrentPage < totalPages) {
+        guruCurrentPage++;
+        updateGuruTable();
+    }
+}
+
+// ============================================================
+// LAPORAN
+// ============================================================
+function generateLaporan() {
+    const kelas = document.getElementById('laporanKelas').value;
+    const bulan = parseInt(document.getElementById('laporanBulan').value);
+
+    let data = allAbsensi;
+    if (kelas !== 'all') {
+        data = data.filter(a => a.kelas === kelas);
+    }
+
+    const content = document.getElementById('laporanContent');
+
+    if (data.length === 0) {
+        content.innerHTML = `
+            <p style="text-align:center;color:var(--gray-400);padding:40px 0;">
+                <i class="fas fa-file-alt" style="font-size:48px;display:block;margin-bottom:12px;"></i>
+                Tidak ada data untuk ditampilkan
+            </p>
+        `;
+        return;
+    }
+
+    let html = `
+        <h4 style="margin-bottom:8px;">Laporan Kehadiran ${kelas !== 'all' ? `Kelas ${kelas}` : 'Semua Kelas'}</h4>
+        <p style="color:var(--gray-500);margin-bottom:16px;">Periode: ${new Date(2024, bulan, 1).toLocaleDateString('id-ID', {month:'long', year:'numeric'})}</p>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nama</th>
+                        <th>Kelas</th>
+                        <th>Tanggal</th>
+                        <th>Status</th>
+                        <th>Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.forEach((item, i) => {
+        const statusClass = {
+            'Hadir': 'hadir',
+            'Sakit': 'sakit',
+            'Izin': 'izin',
+            'Alpha': 'alpha'
+        };
+        html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${item.nama}</td>
+                <td>${item.kelas}</td>
+                <td>${item.tanggal}</td>
+                <td><span class="status-badge ${statusClass[item.status] || ''}">${item.status || '-'}</span></td>
+                <td>${item.keterangan || '-'}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top:20px;padding:16px;background:var(--gray-50);border-radius:var(--radius);display:grid;grid-template-columns:repeat(4,1fr);gap:12px;text-align:center;">
+            <div><strong>Total</strong><br>${data.length}</div>
+            <div style="color:var(--success);"><strong>Hadir</strong><br>${data.filter(d => d.status === 'Hadir').length}</div>
+            <div style="color:var(--warning);"><strong>Sakit</strong><br>${data.filter(d => d.status === 'Sakit').length}</div>
+            <div style="color:var(--info);"><strong>Izin</strong><br>${data.filter(d => d.status === 'Izin').length}</div>
+            <div style="color:var(--danger);"><strong>Alpha</strong><br>${data.filter(d => d.status === 'Alpha').length}</div>
+        </div>
+    `;
+
+    content.innerHTML = html;
+}
+
+function exportLaporan() {
+    const content = document.getElementById('laporanContent');
+    if (content.innerHTML.includes('Tidak ada data')) {
+        showToast('Tidak ada data untuk diexport', 'error');
+        return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Laporan Kehadiran</title>
+                <style>
+                    * { font-family: Arial, sans-serif; }
+                    body { padding: 20px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+                    th { background: #f5f5f5; }
+                    .status-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+                    .hadir { background: #d1fae5; color: #065f46; }
+                    .sakit { background: #fef3c7; color: #92400e; }
+                    .izin { background: #dbeafe; color: #1e40af; }
+                    .alpha { background: #fee2e2; color: #991b1b; }
+                </style>
+            </head>
+            <body>
+                ${content.innerHTML}
+                <script>
+                    window.onload = function() { window.print(); }
+                <\/script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+// ============================================================
+// KELOLA ABSEN
+// ============================================================
+function loadJadwalData() {
+    jadwalData = [
+        { id: 1, mapel: 'Matematika', jamDatang: '07:00', jamSelesai: '08:30', kelas: 'XII RPL 1' },
+        { id: 2, mapel: 'Bahasa Indonesia', jamDatang: '08:45', jamSelesai: '10:15', kelas: 'XII RPL 1' },
+        { id: 3, mapel: 'Pemrograman', jamDatang: '10:30', jamSelesai: '12:00', kelas: 'XII RPL 1' },
+    ];
+    allJadwal = jadwalData;
+    renderJadwal();
+}
+
+function loadLiburData() {
+    liburData = [
+        { tanggal: '2024-12-25', keterangan: 'Hari Natal' },
+        { tanggal: '2024-12-31', keterangan: 'Tahun Baru' },
+    ];
+    allLibur = liburData;
+    renderLibur();
+}
+
+function renderJadwal() {
+    const container = document.getElementById('jadwalList');
+    if (jadwalData.length === 0) {
+        container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--gray-400);">Belum ada jadwal</p>';
+        return;
+    }
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Jam Datang</th>
+                    <th>Jam Selesai</th>
+                    <th>Kelas</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    jadwalData.forEach((j, i) => {
+        html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${j.mapel}</strong></td>
+                <td>${j.jamDatang}</td>
+                <td>${j.jamSelesai}</td>
+                <td><span style="background:var(--gray-100);padding:2px 12px;border-radius:12px;font-size:12px;">${j.kelas}</span></td>
+                <td>
+                    <button onclick="hapusJadwal(${j.id})" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function renderLibur() {
+    const container = document.getElementById('liburList');
+    if (liburData.length === 0) {
+        container.innerHTML = '<p style="text-align:center;padding:20px;color:var(--gray-400);">Belum ada hari libur</p>';
+        return;
+    }
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tanggal</th>
+                    <th>Keterangan</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    liburData.forEach((l, i) => {
+        html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${l.tanggal}</td>
+                <td>${l.keterangan}</td>
+                <td>
+                    <button onclick="hapusLibur(${i})" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function tambahJadwal() {
+    const mapel = document.getElementById('mapelInput').value.trim();
+    const jamDatang = document.getElementById('jamDatang').value;
+    const jamSelesai = document.getElementById('jamSelesai').value;
+    const kelas = document.getElementById('jadwalKelas').value;
+
+    if (!mapel || !jamDatang || !jamSelesai || !kelas) {
+        showToast('Semua field harus diisi!', 'error');
+        return;
+    }
+
+    const id = jadwalData.length > 0 ? Math.max(...jadwalData.map(j => j.id)) + 1 : 1;
+    jadwalData.push({ id, mapel, jamDatang, jamSelesai, kelas });
+    allJadwal = jadwalData;
+    renderJadwal();
+    showToast('Jadwal berhasil ditambahkan', 'success');
+
+    document.getElementById('mapelInput').value = '';
+    document.getElementById('jamDatang').value = '';
+    document.getElementById('jamSelesai').value = '';
+    document.getElementById('jadwalKelas').value = '';
+}
+
+function hapusJadwal(id) {
+    if (confirm('Hapus jadwal ini?')) {
+        jadwalData = jadwalData.filter(j => j.id !== id);
+        allJadwal = jadwalData;
+        renderJadwal();
+        showToast('Jadwal berhasil dihapus', 'success');
+    }
+}
+
+function tambahLibur() {
+    const tanggal = document.getElementById('tanggalLibur').value;
+    const keterangan = document.getElementById('keteranganLibur').value.trim();
+
+    if (!tanggal || !keterangan) {
+        showToast('Tanggal dan keterangan harus diisi!', 'error');
+        return;
+    }
+
+    liburData.push({ tanggal, keterangan });
+    allLibur = liburData;
+    renderLibur();
+    showToast('Hari libur berhasil ditambahkan', 'success');
+
+    document.getElementById('tanggalLibur').value = '';
+    document.getElementById('keteranganLibur').value = '';
+}
+
+function hapusLibur(index) {
+    if (confirm('Hapus hari libur ini?')) {
+        liburData.splice(index, 1);
+        allLibur = liburData;
+        renderLibur();
+        showToast('Hari libur berhasil dihapus', 'success');
+    }
+}
+
+// ============================================================
+// SCAN ABSENSI
+// ============================================================
+async function startScan() {
+    if (scanActive) return;
+
+    try {
+        const video = document.getElementById('video');
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' }
+        });
+        video.srcObject = stream;
+        scanStream = stream;
+        scanActive = true;
+
+        const location = await getLocation();
+        document.getElementById('gpsLocation').textContent = location || 'Lokasi tidak tersedia';
+
+        scanQRCode();
+        showToast('Scan aktif, arahkan ke QR Code', 'info');
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+        console.error(error);
+    }
+}
+
+function stopScan() {
+    if (scanStream) {
+        scanStream.getTracks().forEach(track => track.stop());
+        scanStream = null;
+    }
+    scanActive = false;
+    document.getElementById('video').srcObject = null;
+    showToast('Scan dihentikan', 'info');
+}
+
+function scanQRCode() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function scan() {
+        if (!scanActive) return;
+
+        if (video.readyState === video.HAVE_ENOUGH_DATA) {
+            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                inversionAttempts: 'dontInvert',
+            });
+
+            if (code && code.data) {
+                try {
+                    const data = JSON.parse(code.data);
+                    processQRData(data);
+                    stopScan();
+                    return;
+                } catch (e) {
+                    // Not a valid JSON QR code
+                }
+            }
+        }
+
+        requestAnimationFrame(scan);
+    }
+
+    scan();
+}
+
+function processQRData(data) {
+    const resultContainer = document.getElementById('scanResult');
+    const nis = data.nis || data.username;
+    const name = data.nama || data.name || 'Unknown';
+
+    const siswa = allSiswa.find(s => s.nis === nis || s.nama === name);
+
+    if (siswa) {
+        resultContainer.innerHTML = `
+            <div style="background:var(--success);color:white;padding:16px;border-radius:var(--radius);">
+                <i class="fas fa-check-circle" style="font-size:24px;margin-right:10px;"></i>
+                <strong>${siswa.nama}</strong> (NIS: ${siswa.nis})
+                <br>Status: <strong>Hadir</strong>
+                <br>Waktu: ${new Date().toLocaleTimeString('id-ID')}
+            </div>
+        `;
+
+        simpanAbsensi(siswa, 'Hadir');
+        updateStats();
+        showToast(`Absensi Hadir untuk ${siswa.nama} berhasil`, 'success');
+    } else {
+        resultContainer.innerHTML = `
+            <div style="background:var(--danger);color:white;padding:16px;border-radius:var(--radius);">
+                <i class="fas fa-times-circle" style="font-size:24px;margin-right:10px;"></i>
+                Siswa tidak terdaftar!
+            </div>
+        `;
+    }
+}
+
+function simpanAbsensi(siswa, status) {
+    const absen = {
+        nis: siswa.nis,
+        nama: siswa.nama,
+        kelas: siswa.kelas,
+        tanggal: new Date().toISOString().split('T')[0],
+        waktu: new Date().toLocaleTimeString('id-ID'),
+        status: status,
+        keterangan: 'Presensi via QR Code'
+    };
+
+    if (!allAbsensi) allAbsensi = [];
+    allAbsensi.push(absen);
+
+    updateStats();
+}
+
+function selesaiSemua() {
+    const selected = document.querySelector('input[name="status"]:checked');
+    if (!selected) {
+        showToast('Pilih status terlebih dahulu', 'error');
+        return;
+    }
+
+    const status = selected.value;
+
+    if (allSiswa.length === 0) {
+        showToast('Tidak ada siswa', 'warning');
+        return;
+    }
+
+    if (confirm(`Set semua siswa dengan status ${status}?`)) {
+        allSiswa.forEach(s => {
+            allAbsensi.push({
+                nis: s.nis,
+                nama: s.nama,
+                kelas: s.kelas,
+                tanggal: new Date().toISOString().split('T')[0],
+                waktu: new Date().toLocaleTimeString('id-ID'),
+                status: status,
+                keterangan: 'Presensi massal'
+            });
+        });
+
+        updateStats();
+        showToast(`Semua siswa set ${status} berhasil`, 'success');
+    }
+}
+
+function scanFromImage() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(ev) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+                if (code && code.data) {
+                    try {
+                        const data = JSON.parse(code.data);
+                        processQRData(data);
+                    } catch (error) {
+                        showToast('Format QR tidak valid', 'error');
+                    }
+                } else {
+                    showToast('Tidak ada QR Code terdeteksi', 'error');
+                }
+            };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
+}
+
+function getLocation() {
+    return new Promise((resolve) => {
+        if (!navigator.geolocation) {
+            resolve('Geolokasi tidak didukung');
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                resolve(`Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`);
+            },
+            () => {
+                resolve('Gagal mendapatkan lokasi');
+            }
+        );
+    });
+}
+
+// ============================================================
+// MODAL SYSTEM
+// ============================================================
+function showModal(title, content) {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'customModal';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${content}
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Close on overlay click
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+}
+
+function closeModal() {
+    const modal = document.getElementById('customModal');
+    if (modal) modal.remove();
+}
+
+// ============================================================
+// LOAD ALL DATA
+// ============================================================
+function loadAllData() {
+    loadSiswaData();
+    loadGuruData();
+    loadJadwalData();
+    loadLiburData();
+    loadDashboard();
+
+    // Setup jadwal kelas options
+    const kelasSet = new Set(allSiswa.map(s => s.kelas).filter(k => k));
+    const jadwalSelect = document.getElementById('jadwalKelas');
+    jadwalSelect.innerHTML = '<option value="">Pilih Kelas</option>';
+    kelasSet.forEach(kelas => {
+        const option = document.createElement('option');
+        option.value = kelas;
+        option.textContent = kelas;
+        jadwalSelect.appendChild(option);
+    });
+}
+
+// ============================================================
+// INIT
+// ============================================================
+// Auto-load data on page load (for demo)
+setTimeout(() => {
+    // Only load if not logged in (for preview)
+    if (!document.getElementById('mainApp').classList.contains('active')) {
+        // Demo: show login page by default
+    }
+}, 100);
+</script>
+
 </body>
 </html>
