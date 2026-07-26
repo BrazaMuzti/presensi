@@ -2126,6 +2126,9 @@
         // ============================================================
         // LOGIN SYSTEM
         // ============================================================
+// ============================================================
+// LOGIN - Menentukan role dan akses
+// ============================================================
 async function handleLogin(e) {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
@@ -2189,58 +2192,6 @@ async function handleLogin(e) {
         showToast('Error: ' + error.message, 'error');
     }
 }
-
-        function logout() {
-            if (confirm('Apakah Anda yakin ingin keluar?')) {
-                // Reset semua state
-                currentUser = null;
-                currentRole = null;
-                scanActive = false;
-                if (scanStream) {
-                    scanStream.getTracks().forEach(track => track.stop());
-                    scanStream = null;
-                }
-                document.getElementById('video').srcObject = null;
-
-                // Sembunyikan app, tampilkan login
-                document.getElementById('mainApp').classList.remove('active');
-                document.getElementById('loginPage').classList.remove('hidden');
-                document.getElementById('loginForm').reset();
-
-                showToast('Anda telah keluar', 'info');
-            }
-        }
-
-        function validateUser(username, password, role) {
-            return new Promise((resolve) => {
-                setTimeout(() => {
-                    const users = {
-                        'admin': { nama: 'Admin Sekolah', password: 'admin123' },
-                        'guru': { nama: 'Guru Matematika', password: 'guru123' },
-                        'siswa': { nama: 'Ahmad Fauzi', password: 'siswa123' }
-                    };
-
-                    if (users[username] && users[username].password === password) {
-                        resolve({ nama: users[username].nama, username });
-                    } else {
-                        resolve(null);
-                    }
-                }, 500);
-            });
-        }
-
-        function adjustMenuByRole(role) {
-            const items = document.querySelectorAll('.nav-item');
-            items.forEach(item => {
-                const page = item.dataset.page;
-                if (role === 'siswa') {
-                    const allowed = ['dashboard', 'scan-absen'];
-                    item.style.display = allowed.includes(page) ? 'flex' : 'none';
-                } else {
-                    item.style.display = 'flex';
-                }
-            });
-        }
 
 // ============================================================
 // EDIT SISWA - Hanya untuk siswa yang login
@@ -2411,6 +2362,61 @@ function tambahSiswa() {
         showToast('Anda tidak memiliki akses untuk menambah siswa!', 'error');
         return;
     }
+    // ... existing code ...
+}
+
+        function logout() {
+            if (confirm('Apakah Anda yakin ingin keluar?')) {
+                // Reset semua state
+                currentUser = null;
+                currentRole = null;
+                scanActive = false;
+                if (scanStream) {
+                    scanStream.getTracks().forEach(track => track.stop());
+                    scanStream = null;
+                }
+                document.getElementById('video').srcObject = null;
+
+                // Sembunyikan app, tampilkan login
+                document.getElementById('mainApp').classList.remove('active');
+                document.getElementById('loginPage').classList.remove('hidden');
+                document.getElementById('loginForm').reset();
+
+                showToast('Anda telah keluar', 'info');
+            }
+        }
+
+        function validateUser(username, password, role) {
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    const users = {
+                        'admin': { nama: 'Admin Sekolah', password: 'admin123' },
+                        'guru': { nama: 'Guru Matematika', password: 'guru123' },
+                        'siswa': { nama: 'Ahmad Fauzi', password: 'siswa123' }
+                    };
+
+                    if (users[username] && users[username].password === password) {
+                        resolve({ nama: users[username].nama, username });
+                    } else {
+                        resolve(null);
+                    }
+                }, 500);
+            });
+        }
+
+        function adjustMenuByRole(role) {
+            const items = document.querySelectorAll('.nav-item');
+            items.forEach(item => {
+                const page = item.dataset.page;
+                if (role === 'siswa') {
+                    const allowed = ['dashboard', 'scan-absen'];
+                    item.style.display = allowed.includes(page) ? 'flex' : 'none';
+                } else {
+                    item.style.display = 'flex';
+                }
+            });
+        }
+
         // ============================================================
         // DASHBOARD
         // ============================================================
