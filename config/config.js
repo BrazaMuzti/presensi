@@ -6,7 +6,7 @@
         SPREADSHEET_ID: '1JqCQR3r1ctBm0O2pT_jnAkqRHp1N9KH0E2lQ2H9RTP0',
 
         // Ganti dengan URL Web App setelah deploy
-        WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbyDgnGYsszXZl5mjgttyNvAsjvndknfqh3JvRoZ_f8_ZEo3_SbeKa0KCVS3BcuvWyj4/exec',
+        WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbxauvitJnZmSXZfaNoTuDw4vfBDoFShf4cTuQV46fPox1n_sz8DoAoaPslE_jI4fvcK/exec',
 
         // Nama Sheet
         SHEETS: {
