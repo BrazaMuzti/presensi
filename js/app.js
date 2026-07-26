@@ -9,14 +9,27 @@ let currentUser = null;
 let currentRole = null;
 let currentUsername = null;
 
+// Data arrays
+let allSiswa = [];
+let allGuru = [];
+let allAbsensi = [];
+let allJadwal = [];
+let allLibur = [];
+let scanLogData = [];
+
 // ============================================================
-// INITIALIZATION
+// INITIALIZATION - FIXED
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('App initialized');
+    
     // Set default bulan
     const now = new Date();
-    document.getElementById('filterBulan').value = now.getMonth();
-    document.getElementById('laporanBulan').value = now.getMonth();
+    const bulanSelect = document.getElementById('filterBulan');
+    if (bulanSelect) bulanSelect.value = now.getMonth();
+    
+    const laporanBulan = document.getElementById('laporanBulan');
+    if (laporanBulan) laporanBulan.value = now.getMonth();
 
     // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
@@ -33,6 +46,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load data awal
     loadAllData();
+    
+    console.log('App ready');
 });
 
 // ============================================================
@@ -73,7 +88,8 @@ function updateDateTime() {
         minute: '2-digit',
         second: '2-digit'
     };
-    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
+    const el = document.getElementById('currentDateTime');
+    if (el) el.textContent = now.toLocaleDateString('id-ID', options);
 }
 
 // ============================================================
@@ -92,6 +108,7 @@ function refreshData() {
 // LOAD ALL DATA
 // ============================================================
 function loadAllData() {
+    console.log('Loading all data...');
     loadSiswaData();
     loadGuruData();
     loadJadwalData();
@@ -136,15 +153,15 @@ function showModal(title, content) {
     overlay.className = 'modal-overlay';
     overlay.id = 'customModal';
     overlay.innerHTML = `
-    <div class="modal-content">
-    <div class="modal-header">
-    <h3>${title}</h3>
-    <button class="modal-close" onclick="closeModal()">&times;</button>
-    </div>
-    <div class="modal-body">
-    ${content}
-    </div>
-    </div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>${title}</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                ${content}
+            </div>
+        </div>
     `;
     document.body.appendChild(overlay);
 
@@ -163,6 +180,11 @@ function closeModal() {
 // ============================================================
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
+    if (!container) {
+        console.warn('Toast container not found');
+        return;
+    }
+    
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     const icons = {
