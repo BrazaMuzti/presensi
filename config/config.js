@@ -6,7 +6,7 @@ const APP_CONFIG = {
     SPREADSHEET_ID: '1JqCQR3r1ctBm0O2pT_jnAkqRHp1N9KH0E2lQ2H9RTP0',
 
     // URL Web App (setelah deploy)
-    WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbyDgnGYsszXZl5mjgttyNvAsjvndknfqh3JvRoZ_f8_ZEo3_SbeKa0KCVS3BcuvWyj4/exec',
+    WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbzGHlbFeDT2xtptWhUqb_tPR5D_V5aBGeZc8LDPKxOd8xkneboR4sKr0U5PDdCPul_v/exec',
 
         // Nama Sheet
         SHEETS: {
