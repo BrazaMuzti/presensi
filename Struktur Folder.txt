@@ -1,0 +1,24 @@
+presensi-sekolah/
+├── index.html
+├── config/
+│   └── config.js
+├── css/
+│   └── style.css
+├── js/
+│   ├── app.js
+│   ├── auth.js
+│   ├── dashboard.js
+│   ├── siswa.js
+│   ├── guru.js
+│   ├── laporan.js
+│   ├── kelola-absen.js
+│   └── scan-absen.js
+├── appscript/
+│   └── Code.gs
+└── README.md
+
+🔐 Login Demo
+Role	Username	Password
+Admin	admin	admin123
+Guru	guru	guru123
+Siswa	siswa	siswa123
