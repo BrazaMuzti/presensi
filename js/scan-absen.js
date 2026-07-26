@@ -1,356 +1,345 @@
 // ============================================================
-// SCAN ABSENSI MODULE
+// KELOLA ABSEN MODULE - DENGAN KONEKSI SPREADSHEET
 // ============================================================
 
-let scanStream = null;
-let scanActive = false;
-let scanLogData = [];
-let currentCamera = 'environment';
+let jadwalData = [];
+let liburData = [];
 
 // ============================================================
-// CAMERA SWITCH
+// LOAD JADWAL & LIBUR
 // ============================================================
-function switchCamera() {
-    currentCamera = document.getElementById('cameraSelect').value;
-    if (scanActive) {
-        stopScan();
-        setTimeout(startScan, 500);
+async function loadJadwalData() {
+    try {
+        const result = await callAPI('getJadwal');
+        if (result && result.success) {
+            jadwalData = result.data || [];
+            allJadwal = jadwalData;
+        } else {
+            useDemoJadwalData();
+        }
+    } catch (error) {
+        console.error('Error loading jadwal:', error);
+        useDemoJadwalData();
     }
+    renderJadwal();
+}
+
+function useDemoJadwalData() {
+    jadwalData = [
+        { id: 1, mapel: 'Matematika', jam_datang: '07:00', jam_selesai: '08:30', kelas: 'XII RPL 1' },
+        { id: 2, mapel: 'Bahasa Indonesia', jam_datang: '08:45', jam_selesai: '10:15', kelas: 'XII RPL 1' },
+        { id: 3, mapel: 'Pemrograman', jam_datang: '10:30', jam_selesai: '12:00', kelas: 'XII RPL 1' },
+    ];
+    allJadwal = jadwalData;
+}
+
+async function loadLiburData() {
+    try {
+        const result = await callAPI('getLibur');
+        if (result && result.success) {
+            liburData = result.data || [];
+            allLibur = liburData;
+        } else {
+            useDemoLiburData();
+        }
+    } catch (error) {
+        console.error('Error loading libur:', error);
+        useDemoLiburData();
+    }
+    renderLibur();
+}
+
+function useDemoLiburData() {
+    liburData = [
+        { tanggal: '2024-12-25', keterangan: 'Hari Natal' },
+        { tanggal: '2024-12-31', keterangan: 'Tahun Baru' },
+    ];
+    allLibur = liburData;
 }
 
 // ============================================================
-// START SCAN
+// RENDER JADWAL & LIBUR
 // ============================================================
-async function startScan() {
-    if (scanActive) return;
+function renderJadwal() {
+    const container = document.getElementById('jadwalList');
+    if (!container) return;
+    
+    if (jadwalData.length === 0) {
+        container.innerHTML = '<p style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px;">Belum ada jadwal</p>';
+        return;
+    }
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Mata Pelajaran</th>
+                    <th>Jam Datang</th>
+                    <th>Jam Selesai</th>
+                    <th>Kelas</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    jadwalData.forEach((j, i) => {
+        html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td><strong>${j.mapel || ''}</strong></td>
+                <td>${j.jam_datang || j.jamDatang || ''}</td>
+                <td>${j.jam_selesai || j.jamSelesai || ''}</td>
+                <td><span style="background:var(--gray-100);padding:2px 10px;border-radius:12px;font-size:11px;">${j.kelas || ''}</span></td>
+                <td>
+                    <button onclick="hapusJadwal(${j.id})" class="btn btn-danger btn-sm">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function renderLibur() {
+    const container = document.getElementById('liburList');
+    if (!container) return;
+    
+    if (liburData.length === 0) {
+        container.innerHTML = '<p style="text-align:center;padding:16px;color:var(--gray-400);font-size:12px;">Belum ada hari libur</p>';
+        return;
+    }
+
+    let html = `
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tanggal</th>
+                    <th>Keterangan</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    liburData.forEach((l, i) => {
+        html += `
+            <tr>
+                <td>${i + 1}</td>
+                <td>${l.tanggal || ''}</td>
+                <td>${l.keterangan || ''}</td>
+                <td>
+                    <button onclick="hapusLibur('${l.tanggal}')" class="btn btn-danger btn-sm">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+// ============================================================
+// CRUD JADWAL
+// ============================================================
+async function tambahJadwal() {
+    const mapel = document.getElementById('mapelInput')?.value?.trim() || '';
+    const jamDatang = document.getElementById('jamDatang')?.value || '';
+    const jamSelesai = document.getElementById('jamSelesai')?.value || '';
+    const kelas = document.getElementById('jadwalKelas')?.value || '';
+
+    if (!mapel || !jamDatang || !jamSelesai || !kelas) {
+        showToast('Semua field harus diisi!', 'error');
+        return;
+    }
+
+    const data = {
+        mapel: mapel,
+        jam_datang: jamDatang,
+        jam_selesai: jamSelesai,
+        kelas: kelas
+    };
 
     try {
-        const video = document.getElementById('video');
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: currentCamera }
-        });
-        video.srcObject = stream;
-        scanStream = stream;
-        scanActive = true;
-
-        const location = await getLocation();
-        document.getElementById('gpsLocation').textContent = location || 'Lokasi tidak tersedia';
-
-        scanQRCode();
-        showToast('Scan aktif, arahkan ke QR Code', 'info');
+        showToast('Menyimpan jadwal...', 'info');
+        const result = await callAPI('addJadwal', data);
+        
+        if (result && result.success) {
+            await loadJadwalData();
+            showToast(result.message || 'Jadwal berhasil ditambahkan', 'success');
+            
+            document.getElementById('mapelInput').value = '';
+            document.getElementById('jamDatang').value = '';
+            document.getElementById('jamSelesai').value = '';
+            document.getElementById('jadwalKelas').value = '';
+        } else {
+            showToast(result?.message || 'Gagal menambahkan jadwal!', 'error');
+        }
     } catch (error) {
         showToast('Error: ' + error.message, 'error');
-        console.error(error);
     }
 }
 
-// ============================================================
-// STOP SCAN
-// ============================================================
-function stopScan() {
-    if (scanStream) {
-        scanStream.getTracks().forEach(track => track.stop());
-        scanStream = null;
-    }
-    scanActive = false;
-    document.getElementById('video').srcObject = null;
-    showToast('Scan dihentikan', 'info');
-}
+async function hapusJadwal(id) {
+    if (!confirm('Hapus jadwal ini?')) return;
 
-// ============================================================
-// SCAN QR CODE
-// ============================================================
-function scanQRCode() {
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    function scan() {
-        if (!scanActive) return;
-
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            canvas.height = video.videoHeight;
-            canvas.width = video.videoWidth;
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                inversionAttempts: 'dontInvert',
-            });
-
-            if (code && code.data) {
-                try {
-                    const data = JSON.parse(code.data);
-                    processQRData(data);
-                    stopScan();
-                    return;
-                } catch (e) {}
-            }
+    try {
+        showToast('Menghapus jadwal...', 'info');
+        const result = await callAPI('deleteJadwal', { id });
+        
+        if (result && result.success) {
+            await loadJadwalData();
+            showToast(result.message || 'Jadwal berhasil dihapus', 'success');
+        } else {
+            showToast(result?.message || 'Gagal menghapus jadwal!', 'error');
         }
-
-        requestAnimationFrame(scan);
-    }
-
-    scan();
-}
-
-// ============================================================
-// PROCESS QR DATA
-// ============================================================
-function processQRData(data) {
-    const resultContainer = document.getElementById('scanResult');
-    const nis = data.nis || data.username;
-
-    const siswa = allSiswa.find(s => s.nis === nis);
-
-    if (siswa) {
-        const today = new Date().toISOString().split('T')[0];
-        const existing = allAbsensi.find(a => a.nis === siswa.nis && a.tanggal === today);
-        if (existing) {
-            resultContainer.innerHTML = `
-            <div style="background:var(--warning);color:white;padding:12px;border-radius:var(--radius);">
-            <i class="fas fa-exclamation-triangle" style="margin-right:8px;"></i>
-            ${siswa.nama} sudah melakukan presensi hari ini (${existing.status})
-            </div>
-            `;
-            return;
-        }
-
-        resultContainer.innerHTML = `
-        <div style="background:var(--success);color:white;padding:12px;border-radius:var(--radius);">
-        <i class="fas fa-check-circle" style="margin-right:8px;"></i>
-        <strong>${siswa.nama}</strong> (NIS: ${siswa.nis})
-        <br>Status: <strong>Hadir</strong>
-        <br>Waktu: ${new Date().toLocaleTimeString('id-ID')}
-        </div>
-        `;
-
-        simpanAbsensi(siswa, 'Hadir', 'Presensi via QR Code');
-        updateStats();
-        showToast(`Absensi Hadir untuk ${siswa.nama} berhasil`, 'success');
-    } else {
-        resultContainer.innerHTML = `
-        <div style="background:var(--danger);color:white;padding:12px;border-radius:var(--radius);">
-        <i class="fas fa-times-circle" style="margin-right:8px;"></i>
-        Siswa tidak terdaftar!
-        </div>
-        `;
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
 // ============================================================
-// SIMPAN ABSENSI
+// CRUD LIBUR
 // ============================================================
-function simpanAbsensi(siswa, status, keterangan = '') {
-    const absen = {
-        nis: siswa.nis,
-        nama: siswa.nama,
-        kelas: siswa.kelas,
-        tanggal: new Date().toISOString().split('T')[0],
-        waktu: new Date().toLocaleTimeString('id-ID'),
-        status: status,
-        keterangan: keterangan || `Presensi ${status}`
+async function tambahLibur() {
+    const tanggal = document.getElementById('tanggalLibur')?.value || '';
+    const keterangan = document.getElementById('keteranganLibur')?.value?.trim() || '';
+
+    if (!tanggal || !keterangan) {
+        showToast('Tanggal dan keterangan harus diisi!', 'error');
+        return;
+    }
+
+    const data = {
+        tanggal: tanggal,
+        keterangan: keterangan
     };
 
-    if (!allAbsensi) allAbsensi = [];
-    allAbsensi.push(absen);
-
-    scanLogData.push(absen);
-    updateScanLog();
-
-    updateStats();
-}
-
-// ============================================================
-// UPDATE SCAN LOG
-// ============================================================
-function updateScanLog() {
-    const container = document.getElementById('scanLog');
-    if (scanLogData.length === 0) {
-        container.innerHTML =
-        '<p class="empty-state">Belum ada presensi</p>';
-    return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const todayLog = scanLogData.filter(a => a.tanggal === today);
-
-    if (todayLog.length === 0) {
-        container.innerHTML =
-        '<p class="empty-state">Belum ada presensi hari ini</p>';
-    return;
-    }
-
-    container.innerHTML = todayLog.map((item, i) => `
-    <div class="result-item">
-    <span>${i + 1}. ${item.nama} (${item.kelas})</span>
-    <span>
-    <span class="status status-badge ${item.status.toLowerCase()}">${item.status}</span>
-    <small style="color:var(--gray-400);font-size:10px;">${item.waktu}</small>
-    ${item.keterangan ? `<small style="color:var(--gray-400);font-size:10px;">${item.keterangan}</small>` : ''}
-    </span>
-    </div>
-    `).join('');
-}
-
-// ============================================================
-// PRESENSI MANUAL
-// ============================================================
-function presensiManual() {
-    const kelas = document.getElementById('manualKelas').value;
-    const siswaSelect = document.getElementById('manualSiswa');
-    const nis = siswaSelect.value;
-    const status = document.querySelector('input[name="status"]:checked')?.value;
-
-    if (!kelas || !nis || !status) {
-        showToast('Pilih kelas, siswa, dan status!', 'error');
-        return;
-    }
-
-    const siswa = allSiswa.find(s => s.nis === nis && s.kelas === kelas);
-    if (!siswa) {
-        showToast('Siswa tidak ditemukan!', 'error');
-        return;
-    }
-
-    const today = new Date().toISOString().split('T')[0];
-    const existing = allAbsensi.find(a => a.nis === siswa.nis && a.tanggal === today);
-    if (existing) {
-        if (confirm(`${siswa.nama} sudah presensi ${existing.status}. Ubah status?`)) {
-            existing.status = status;
-            existing.keterangan = 'Diedit manual';
-            showToast(`Status ${siswa.nama} diubah menjadi ${status}`, 'success');
-            updateScanLog();
-            updateStats();
+    try {
+        showToast('Menyimpan hari libur...', 'info');
+        const result = await callAPI('addLibur', data);
+        
+        if (result && result.success) {
+            await loadLiburData();
+            showToast(result.message || 'Hari libur berhasil ditambahkan', 'success');
+            
+            document.getElementById('tanggalLibur').value = '';
+            document.getElementById('keteranganLibur').value = '';
+        } else {
+            showToast(result?.message || 'Gagal menambahkan hari libur!', 'error');
         }
-        return;
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
     }
+}
 
-    simpanAbsensi(siswa, status, 'Presensi manual');
-    showToast(`Presensi ${status} untuk ${siswa.nama} berhasil`, 'success');
-    document.getElementById('manualSiswa').value = '';
+async function hapusLibur(tanggal) {
+    if (!confirm('Hapus hari libur ini?')) return;
+
+    try {
+        showToast('Menghapus hari libur...', 'info');
+        const result = await callAPI('deleteLibur', { tanggal });
+        
+        if (result && result.success) {
+            await loadLiburData();
+            showToast(result.message || 'Hari libur berhasil dihapus', 'success');
+        } else {
+            showToast(result?.message || 'Gagal menghapus hari libur!', 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
 }
 
 // ============================================================
-UPDATE MANUAL SISWA
+// KELOLA KEHADIRAN
 // ============================================================
-function updateManualSiswa() {
-    const kelas = document.getElementById('manualKelas').value;
-    const select = document.getElementById('manualSiswa');
-    select.innerHTML = '<option value="">Pilih Siswa</option>';
+async function loadKelolaAbsen() {
+    const kelas = document.getElementById('kelolaKelas')?.value || 'all';
+    const tanggal = document.getElementById('kelolaTanggal')?.value || '';
 
-    const siswa = allSiswa.filter(s => s.kelas === kelas || kelas === 'all');
-    siswa.forEach(s => {
-        const option = document.createElement('option');
-        option.value = s.nis;
-        option.textContent = `${s.nama} (${s.nis})`;
-        select.appendChild(option);
+    let data = allAbsensi || [];
+    if (kelas !== 'all') {
+        data = data.filter(a => a.kelas === kelas);
+    }
+    if (tanggal) {
+        data = data.filter(a => a.tanggal === tanggal);
+    }
+
+    const tbody = document.getElementById('kelolaTableBody');
+    if (!tbody) return;
+    
+    if (data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align:center;padding:20px;color:var(--gray-400);font-size:13px;">
+                    Tidak ada data
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    data.forEach((item, i) => {
+        const tr = document.createElement('tr');
+        const statusOptions = ['Hadir', 'Sakit', 'Izin', 'Alpha'].map(s =>
+            `<option value="${s}" ${s === item.status ? 'selected' : ''}>${s}</option>`).join('');
+        tr.innerHTML = `
+            <td>${i + 1}</td>
+            <td>${item.nama || ''}</td>
+            <td>${item.kelas || ''}</td>
+            <td><span class="status-badge ${item.status?.toLowerCase() || ''}">${item.status || '-'}</span></td>
+            <td>
+                <select class="edit-status" data-nis="${item.nis}" data-tanggal="${item.tanggal}" style="padding:4px 8px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:11px;outline:none;">
+                    ${statusOptions}
+                </select>
+                <button onclick="updateKelolaStatus(this)" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(tr);
     });
 }
 
-// ============================================================
-// SELESAI SEMUA
-// ============================================================
-function selesaiSemua() {
-    const kelas = document.getElementById('manualKelas').value;
-    const status = document.querySelector('input[name="status"]:checked')?.value;
+async function updateKelolaStatus(button) {
+    const row = button.closest('tr');
+    const select = row.querySelector('.edit-status');
+    const nis = select.dataset.nis;
+    const tanggal = select.dataset.tanggal;
+    const newStatus = select.value;
 
-    if (!kelas || !status) {
-        showToast('Pilih kelas dan status!', 'error');
-        return;
-    }
-
-    const siswaList = allSiswa.filter(s => s.kelas === kelas);
-    if (siswaList.length === 0) {
-        showToast('Tidak ada siswa di kelas ini', 'warning');
-        return;
-    }
-
-    if (confirm(`Set semua siswa kelas ${kelas} dengan status ${status}?`)) {
-        const today = new Date().toISOString().split('T')[0];
-        siswaList.forEach(s => {
-            const existing = allAbsensi.find(a => a.nis === s.nis && a.tanggal === today);
-            if (existing) {
-                existing.status = status;
-                existing.keterangan = 'Diedit massal';
-            } else {
-                simpanAbsensi(s, status, 'Presensi massal');
-            }
+    try {
+        showToast('Mengupdate status...', 'info');
+        const result = await callAPI('updateAbsensi', {
+            nis: nis,
+            tanggal: tanggal,
+            status: newStatus,
+            keterangan: 'Diedit manual'
         });
-        showToast(`Semua siswa kelas ${kelas} set ${status} berhasil`, 'success');
-        updateScanLog();
-        updateStats();
-    }
-}
-
-// ============================================================
-// SCAN FROM IMAGE
-// ============================================================
-function scanFromImage() {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = function(e) {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(ev) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const code = jsQR(imageData.data, imageData.width, imageData.height);
-
-                if (code && code.data) {
-                    try {
-                        const data = JSON.parse(code.data);
-                        processQRData(data);
-                    } catch (error) {
-                        showToast('Format QR tidak valid', 'error');
-                    }
-                } else {
-                    showToast('Tidak ada QR Code terdeteksi', 'error');
-                }
-            };
-            img.src = ev.target.result;
-        };
-        reader.readAsDataURL(file);
-    };
-    input.click();
-}
-
-// ============================================================
-// GET LOCATION
-// ============================================================
-function getLocation() {
-    return new Promise((resolve) => {
-        if (!navigator.geolocation) {
-            resolve('Geolokasi tidak didukung');
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const { latitude, longitude } = position.coords;
-                resolve(`Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`);
-            },
-            () => {
-                resolve('Gagal mendapatkan lokasi');
+        
+        if (result && result.success) {
+            // Update local data
+            const absen = allAbsensi.find(a => a.nis === nis && a.tanggal === tanggal);
+            if (absen) {
+                absen.status = newStatus;
+                absen.keterangan = 'Diedit manual';
             }
-        );
-    });
-}
-
-// ============================================================
-// EVENT LISTENER
-// ============================================================
-document.addEventListener('change', function(e) {
-    if (e.target.id === 'manualKelas') {
-        updateManualSiswa();
+            loadKelolaAbsen();
+            updateStats();
+            showToast(result.message || 'Status berhasil diupdate', 'success');
+        } else {
+            showToast(result?.message || 'Gagal mengupdate status!', 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
     }
-});
+}
