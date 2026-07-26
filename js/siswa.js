@@ -294,3 +294,201 @@ async function tambahSiswa() {
 async function editSiswa(nis) {
     const siswa = siswaData.find(s => s.nis === nis);
     if (!siswa) {
+        showToast('Siswa tidak ditemukan', 'error');
+        return;
+    }
+
+    // Jika role siswa, hanya bisa edit dirinya sendiri
+    if (currentRole === 'siswa') {
+        if (siswa.nis !== currentUsername && siswa.nama !== currentUser?.nama) {
+            showToast('Anda hanya bisa mengedit data sendiri!', 'error');
+            return;
+        }
+    }
+
+    const kelasOptions = [...new Set(allSiswa.map(s => s.kelas).filter(k => k))].map(k =>
+        `<option value="${k}" ${k === siswa.kelas ? 'selected' : ''}>${k}</option>`).join('');
+    const ekstraOptions = ['Pramuka', 'Paskibra', 'PMR', 'Futsal', 'Basket', 'Voli', 'Musik', 'Dance'].map(e =>
+        `<option value="${e}" ${e === siswa.ekstra ? 'selected' : ''}>${e}</option>`).join('');
+
+    const isSiswa = currentRole === 'siswa';
+    const disabledAttr = isSiswa ? 'disabled' : '';
+
+    showModal(isSiswa ? 'Edit Data Diri' : 'Edit Siswa', `
+        <form id="formEditSiswa">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>NIS/NISN</label>
+                    <input type="text" id="eNis" value="${siswa.nis || ''}" ${disabledAttr}>
+                </div>
+                <div class="form-group">
+                    <label>Nama Lengkap</label>
+                    <input type="text" id="eNama" value="${siswa.nama || ''}" ${isSiswa ? 'disabled' : 'required'}>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kelas</label>
+                    <select id="eKelas" ${isSiswa ? 'disabled' : ''}>
+                        <option value="">Pilih Kelas</option>
+                        ${kelasOptions}
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Ekstrakurikuler</label>
+                    <select id="eEkstra" ${isSiswa ? 'disabled' : ''}>
+                        <option value="">Pilih Ekstra</option>
+                        ${ekstraOptions}
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Jenis Kelamin</label>
+                    <select id="eJk" ${isSiswa ? 'disabled' : ''}>
+                        <option value="L" ${siswa.jk === 'L' ? 'selected' : ''}>Laki-laki</option>
+                        <option value="P" ${siswa.jk === 'P' ? 'selected' : ''}>Perempuan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Tanggal Lahir</label>
+                    <input type="date" id="eTglLahir" value="${siswa.tgl_lahir || ''}" ${isSiswa ? 'disabled' : ''}>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Agama</label>
+                    <input type="text" id="eAgama" value="${siswa.agama || ''}" ${isSiswa ? 'disabled' : ''}>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="ePassword" value="${siswa.password || ''}" required>
+                </div>
+            </div>
+            ${!isSiswa ? `
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nama Ayah</label>
+                    <input type="text" id="eAyah" value="${siswa.ayah || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Nama Ibu</label>
+                    <input type="text" id="eIbu" value="${siswa.ibu || ''}">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>No.HP</label>
+                    <input type="text" id="eHp" value="${siswa.hp || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="eKeterangan">
+                        <option value="Aktif" ${siswa.keterangan === 'Aktif' ? 'selected' : ''}>Aktif</option>
+                        <option value="Pindah" ${siswa.keterangan === 'Pindah' ? 'selected' : ''}>Pindah</option>
+                        <option value="Lulus" ${siswa.keterangan === 'Lulus' ? 'selected' : ''}>Lulus</option>
+                        <option value="Keluar" ${siswa.keterangan === 'Keluar' ? 'selected' : ''}>Keluar</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Alamat</label>
+                <textarea id="eAlamat">${siswa.alamat || ''}</textarea>
+            </div>
+            ` : ''}
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+                <i class="fas fa-save"></i> ${isSiswa ? 'Update Data Diri' : 'Update Siswa'}
+            </button>
+        </form>
+    `);
+
+    document.getElementById('formEditSiswa').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const updatedData = {
+            nis: document.getElementById('eNis').value,
+            nama: isSiswa ? siswa.nama : document.getElementById('eNama').value,
+            kelas: isSiswa ? siswa.kelas : document.getElementById('eKelas').value,
+            ekstra: isSiswa ? siswa.ekstra : document.getElementById('eEkstra').value,
+            jk: isSiswa ? siswa.jk : document.getElementById('eJk').value,
+            tgl_lahir: isSiswa ? siswa.tgl_lahir : document.getElementById('eTglLahir').value,
+            agama: isSiswa ? siswa.agama : document.getElementById('eAgama').value,
+            ayah: isSiswa ? siswa.ayah : document.getElementById('eAyah').value,
+            ibu: isSiswa ? siswa.ibu : document.getElementById('eIbu').value,
+            hp: isSiswa ? siswa.hp : document.getElementById('eHp').value,
+            alamat: isSiswa ? siswa.alamat : document.getElementById('eAlamat').value,
+            keterangan: isSiswa ? siswa.keterangan : document.getElementById('eKeterangan').value,
+            password: document.getElementById('ePassword').value
+        };
+
+        try {
+            showToast('Mengupdate data...', 'info');
+            const result = await callAPI('updateSiswa', updatedData);
+            
+            if (result && result.success) {
+                await loadSiswaData();
+                closeModal();
+                showToast(result.message || 'Data berhasil diupdate!', 'success');
+            } else {
+                showToast(result?.message || 'Gagal mengupdate data!', 'error');
+            }
+        } catch (error) {
+            showToast('Error: ' + error.message, 'error');
+        }
+    });
+}
+
+// ============================================================
+// HAPUS SISWA
+// ============================================================
+async function hapusSiswa(nis) {
+    if (currentRole === 'siswa') {
+        showToast('Anda tidak memiliki akses untuk menghapus!', 'error');
+        return;
+    }
+    
+    if (!confirm(`Yakin hapus siswa dengan NIS ${nis}?`)) return;
+
+    try {
+        showToast('Menghapus data...', 'info');
+        const result = await callAPI('deleteSiswa', { nis });
+        
+        if (result && result.success) {
+            await loadSiswaData();
+            showToast(result.message || 'Siswa berhasil dihapus', 'success');
+        } else {
+            showToast(result?.message || 'Gagal menghapus siswa!', 'error');
+        }
+    } catch (error) {
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+// ============================================================
+// FILTER & PAGINATION
+// ============================================================
+function filterSiswa() {
+    siswaCurrentPage = 1;
+    updateSiswaTable();
+}
+
+function refreshDataSiswa() {
+    loadSiswaData();
+}
+
+function prevSiswaPage() {
+    if (siswaCurrentPage > 1) {
+        siswaCurrentPage--;
+        updateSiswaTable();
+    }
+}
+
+function nextSiswaPage() {
+    const totalPages = Math.ceil(siswaData.length / siswaPerPage);
+    if (siswaCurrentPage < totalPages) {
+        siswaCurrentPage++;
+        updateSiswaTable();
+    }
+}
