@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
-        /* (CSS sama seperti sebelumnya – tidak diubah) */
+        /* ===== RESET & BASE (sama seperti sebelumnya, tidak diubah) ===== */
         * {
             margin: 0;
             padding: 0;
@@ -1462,18 +1462,24 @@
         let scannerActive = false;
         let cameraStream = null;
         let cameraFacing = 'environment';
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxD6wlyFlSoWJ2I8OioLiBvdv3-rfw9mx5_jAHZ6IKfYjkwNqAtRUS97TUVSw_YO8AI/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz3EE2YiE8vvPnoua82FXKJp06A8I5iZxa1faYnOVa-2I6fHYyHDXDfohJ7nm3Ld8FG/exec';
 
         // ================================================================
-        //  GOOGLE APPS SCRIPT COMMUNICATION
+        //  GOOGLE APPS SCRIPT COMMUNICATION (Menggunakan x-www-form-urlencoded)
         // ================================================================
         function callAppScript(fn, params, callback) {
             console.log(`[callAppScript] Mengirim request ke ${SCRIPT_URL} dengan action: ${fn}`);
+
+            // Buat FormData
+            const formData = new FormData();
+            formData.append('action', fn);
+            formData.append('params', JSON.stringify(params));
+
             fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: fn, params: params })
+                // Jangan set Content-Type, biar browser set dengan boundary otomatis
+                body: formData
             })
             .then(response => {
                 if (!response.ok) {
@@ -2470,7 +2476,6 @@
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('appContainer').classList.remove('active');
             setRole('siswa');
-            // Coba muat data untuk mengecek koneksi, tapi tidak masalah jika gagal
             loadAllData();
         });
 
