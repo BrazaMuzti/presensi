@@ -1549,12 +1549,14 @@
         </div>
     </div>
 
-    <!-- ===== SCRIPTS ===== -->
+    <!-- ================================================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ================================================================ -->
     <script>
         // ================================================================
         //  GLOBAL STATE
         // ================================================================
-        let currentUser = null; // { username, role, nama, kelas? }
+        let currentUser = null;
         let siswaData = [];
         let guruData = [];
         let absensiData = [];
@@ -1564,48 +1566,29 @@
         let scannerActive = false;
         let cameraStream = null;
         let cameraFacing = 'environment';
-        let qrCodeData = '';
 
         // ================================================================
-        //  GOOGLE APPS SCRIPT BRIDGE
+        //  GOOGLE APPS SCRIPT COMMUNICATION
         // ================================================================
-        // These functions will be replaced by google.script.run in production
-        // but we define them here for local testing with mock data.
-        // In AppScript, use: google.script.run.withSuccessHandler(cb).functionName()
-
-// GANTI fungsi callAppScript yang lama dengan ini
-function callAppScript(fn, params, callback) {
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyn1_LVtO_zP2Qb8Pb_7SeX35o_3Xjf5akL3X672i7hSJd-kQ5x4CQs_csVgEwm4s4z/exec';
-    
-    // Kirim data sebagai POST dengan JSON
-    fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors', // Penting untuk menghindari CORS error
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            action: fn,
-            params: params
-        })
-    })
-    .then(response => response.text())
-    .then(result => {
-        // Karena mode 'no-cors', kita tidak bisa membaca response secara langsung.
-        // Kita perlu parsing dari teks.
-        try {
-            const data = JSON.parse(result);
-            if (callback) callback(data);
-        } catch (e) {
-            console.error('Error parsing response:', e);
-            if (callback) callback(null);
+        function callAppScript(fn, params, callback) {
+            const scriptUrl = 'https://script.google.com/macros/s/AKfycbxthfUoz5T12l8T63wafSaYG9BbFwjkFfMyhsJGj2YJvtkqR8KYmFkpBFp79H7bfSz1/exec';
+            fetch(scriptUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: fn, params: params })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (callback) callback(data);
+            })
+            .catch(error => {
+                console.error('Error calling Apps Script:', error);
+                if (callback) callback(null);
+            });
         }
-    })
-    .catch(error => {
-        console.error('Error calling Apps Script:', error);
-        if (callback) callback(null);
-    });
-}
 
         // ================================================================
         //  AUTH
@@ -1631,7 +1614,6 @@ function callAppScript(fn, params, callback) {
                 return;
             }
 
-            // Call AppScript
             callAppScript('login', { username, password, role: loginRole }, function(result) {
                 if (result && result.success) {
                     currentUser = result.user;
@@ -1644,26 +1626,6 @@ function callAppScript(fn, params, callback) {
                     errorEl.style.display = 'block';
                 }
             });
-
-            // Mock for demo
-            if (!window._mockAppScript) {
-                // Simple mock login
-                if ((loginRole === 'siswa' && username === '12345' && password === '12345') ||
-                    (loginRole === 'guru' && username === 'admin' && password === 'admin')) {
-                    currentUser = {
-                        username: username,
-                        role: loginRole,
-                        nama: loginRole === 'siswa' ? 'Budi Santoso' : 'Ahmad Fauzi',
-                        kelas: loginRole === 'siswa' ? 'X IPA' : null
-                    };
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('appContainer').classList.add('active');
-                    initApp();
-                } else {
-                    errorEl.textContent = '❌ NIS/NIP atau password salah! (demo: 12345/12345 atau admin/admin)';
-                    errorEl.style.display = 'block';
-                }
-            }
         }
 
         function logout() {
@@ -1691,21 +1653,16 @@ function callAppScript(fn, params, callback) {
             const isSiswa = currentUser.role === 'siswa';
             document.getElementById('studentEditMenu').style.display = isSiswa ? 'flex' : 'none';
             document.getElementById('qrCardMenu').style.display = isSiswa ? 'flex' : 'none';
-            // Hide admin menus for siswa
             const adminMenus = ['siswa', 'guru', 'laporan', 'kelola', 'presensi'];
             adminMenus.forEach(m => {
                 const el = document.querySelector(`[data-panel="${m}"]`);
                 if (el) el.style.display = isSiswa ? 'none' : 'flex';
             });
 
-            // Update date/time
             updateClock();
             setInterval(updateClock, 1000);
 
-            // Load data
             loadAllData();
-
-            // Show dashboard
             showPanel('dashboard');
         }
 
@@ -1728,30 +1685,22 @@ function callAppScript(fn, params, callback) {
         //  NAVIGATION
         // ================================================================
         function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('open');
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
         }
 
         function showPanel(panelId) {
-            // Close sidebar on mobile
             if (window.innerWidth <= 992) {
                 document.getElementById('sidebar').classList.remove('open');
                 document.getElementById('sidebarOverlay').classList.remove('open');
             }
-
-            // Update nav
             document.querySelectorAll('.sidebar .nav a').forEach(a => {
                 a.classList.toggle('active', a.dataset.panel === panelId);
             });
-
-            // Show panel
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             const target = document.getElementById('panel-' + panelId);
             if (target) target.classList.add('active');
 
-            // Update title
             const titles = {
                 dashboard: 'Dashboard',
                 siswa: 'Data Siswa',
@@ -1764,7 +1713,6 @@ function callAppScript(fn, params, callback) {
             };
             document.getElementById('pageTitle').textContent = titles[panelId] || panelId;
 
-            // Load data on panel switch
             if (panelId === 'siswa') renderSiswa();
             if (panelId === 'guru') renderGuru();
             if (panelId === 'laporan') renderLaporan();
@@ -1788,7 +1736,6 @@ function callAppScript(fn, params, callback) {
                     absensiData = data.absensi || [];
                     jadwalData = data.jadwal || [];
                     liburData = data.libur || [];
-                    // Update UI
                     updateDashboard();
                     renderSiswa();
                     renderGuru();
@@ -1799,89 +1746,10 @@ function callAppScript(fn, params, callback) {
                     loadKelasOptions('guruFilterKelas');
                     loadKelasOptions('laporanFilterKelas');
                     loadKelasOptions('presensiFilterKelas');
+                } else {
+                    alert('Gagal memuat data. Periksa koneksi atau URL Web App.');
                 }
             });
-
-            // Mock data for demo
-            if (!window._mockAppScript) {
-                // Generate mock data
-                if (siswaData.length === 0) {
-                    const kelas = ['X IPA', 'X IPS', 'XI IPA', 'XI IPS', 'XII IPA', 'XII IPS'];
-                    const names = ['Budi', 'Ani', 'Caca', 'Dedi', 'Eka', 'Fani', 'Gilang', 'Hani', 'Irfan', 'Jeni',
-                        'Kevin', 'Lia', 'Maya', 'Nando', 'Ocha', 'Putri', 'Qori', 'Rina', 'Sandi', 'Tia'
-                    ];
-                    for (let i = 0; i < 20; i++) {
-                        siswaData.push({
-                            nis: '2024' + String(1000 + i).padStart(4, '0'),
-                            nama: names[i % names.length] + ' ' + (i + 1),
-                            kelas: kelas[i % kelas.length],
-                            jk: i % 2 === 0 ? 'L' : 'P',
-                            tglLahir: '2006-0' + ((i % 12) + 1) + '-' + String(10 + i % 20).padStart(2, '0'),
-                            agama: ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Budha'][i % 5],
-                            ayah: 'Ayah ' + (i + 1),
-                            ibu: 'Ibu ' + (i + 1),
-                            hp: '08' + String(1000000000 + i * 12345).slice(0, 11),
-                            alamat: 'Jl. Pendidikan No. ' + (i + 1),
-                            keterangan: '',
-                            password: '12345'
-                        });
-                    }
-                }
-                if (guruData.length === 0) {
-                    guruData = [
-                        { username: 'guru1', nama: 'Ahmad Fauzi', guruKelas: 'X IPA', password: 'guru123' },
-                        { username: 'guru2', nama: 'Siti Rahma', guruKelas: 'XI IPS', password: 'guru123' },
-                        { username: 'guru3', nama: 'Budi Prasetyo', guruKelas: 'XII IPA', password: 'guru123' },
-                        { username: 'admin', nama: 'Administrator', guruKelas: 'Semua', password: 'admin' },
-                    ];
-                }
-                if (jadwalData.length === 0) {
-                    jadwalData = [
-                        { mapel: 'Matematika', jamDatang: '07:00', jamSelesai: '08:30', kelas: 'X IPA' },
-                        { mapel: 'Fisika', jamDatang: '08:45', jamSelesai: '10:15', kelas: 'X IPA' },
-                        { mapel: 'Kimia', jamDatang: '10:30', jamSelesai: '12:00', kelas: 'XI IPA' },
-                        { mapel: 'Biologi', jamDatang: '13:00', jamSelesai: '14:30', kelas: 'XI IPA' },
-                    ];
-                }
-                if (liburData.length === 0) {
-                    const today = new Date();
-                    liburData = [
-                        { tanggal: '2026-01-01', keterangan: 'Tahun Baru' },
-                        { tanggal: '2026-02-14', keterangan: 'Libur Isra Mi\'raj' },
-                    ];
-                }
-                if (absensiData.length === 0) {
-                    const today = new Date().toISOString().slice(0, 10);
-                    for (let i = 0; i < 10; i++) {
-                        const status = ['hadir', 'hadir', 'hadir', 'sakit', 'izin', 'hadir', 'hadir', 'alpha', 'hadir',
-                            'hadir'
-                        ][i % 10];
-                        absensiData.push({
-                            tanggal: today,
-                            nis: siswaData[i]?.nis || '2024001',
-                            nama: siswaData[i]?.nama || 'Siswa ' + (i + 1),
-                            kelas: siswaData[i]?.kelas || 'X IPA',
-                            status: status,
-                            mapel: 'Matematika',
-                            jamDatang: '07:' + String(10 + i).padStart(2, '0'),
-                            jamSelesai: i % 2 === 0 ? '' : '08:30',
-                            scanMethod: 'manual',
-                            gps: '-'
-                        });
-                    }
-                }
-                // Re-render
-                updateDashboard();
-                renderSiswa();
-                renderGuru();
-                renderLaporan();
-                renderJadwal();
-                renderLibur();
-                loadKelasOptions('siswaFilterKelas');
-                loadKelasOptions('guruFilterKelas');
-                loadKelasOptions('laporanFilterKelas');
-                loadKelasOptions('presensiFilterKelas');
-            }
         }
 
         // ================================================================
@@ -1901,11 +1769,9 @@ function callAppScript(fn, params, callback) {
             document.getElementById('totalIzin').textContent = izin;
             document.getElementById('totalAlpha').textContent = alpha;
 
-            // Chart
             const ctx = document.getElementById('attendanceChart').getContext('2d');
             if (chartInstance) chartInstance.destroy();
 
-            // Get last 7 days
             const days = [];
             const hadirData = [];
             const sakitData = [];
@@ -2010,8 +1876,6 @@ function callAppScript(fn, params, callback) {
                 renderSiswa();
                 updateDashboard();
             });
-            renderSiswa();
-            updateDashboard();
         }
 
         function saveSiswa(e) {
@@ -2050,10 +1914,6 @@ function callAppScript(fn, params, callback) {
                 updateDashboard();
                 loadKelasOptions('siswaFilterKelas');
             });
-            closeModal('modalSiswa');
-            renderSiswa();
-            updateDashboard();
-            loadKelasOptions('siswaFilterKelas');
         }
 
         function loadKelasOptions(selectId) {
@@ -2123,7 +1983,6 @@ function callAppScript(fn, params, callback) {
             if (!confirm('Yakin hapus guru ini?')) return;
             guruData.splice(index, 1);
             callAppScript('saveGuruData', { data: guruData }, function() { renderGuru(); });
-            renderGuru();
         }
 
         function saveGuru(e) {
@@ -2153,9 +2012,6 @@ function callAppScript(fn, params, callback) {
                 renderGuru();
                 loadKelasOptions('guruFilterKelas');
             });
-            closeModal('modalGuru');
-            renderGuru();
-            loadKelasOptions('guruFilterKelas');
         }
 
         // ================================================================
@@ -2177,7 +2033,6 @@ function callAppScript(fn, params, callback) {
                 return matchSearch && matchKelas && matchBulan;
             });
 
-            // Sort by date desc
             filtered.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
             const tbody = document.getElementById('laporanTableBody');
@@ -2254,15 +2109,12 @@ function callAppScript(fn, params, callback) {
                 closeModal('modalJadwal');
                 renderJadwal();
             });
-            closeModal('modalJadwal');
-            renderJadwal();
         }
 
         function hapusJadwal(index) {
             if (!confirm('Hapus jadwal ini?')) return;
             jadwalData.splice(index, 1);
             callAppScript('saveJadwalData', { data: jadwalData }, function() { renderJadwal(); });
-            renderJadwal();
         }
 
         // ================================================================
@@ -2301,15 +2153,12 @@ function callAppScript(fn, params, callback) {
                 closeModal('modalLibur');
                 renderLibur();
             });
-            closeModal('modalLibur');
-            renderLibur();
         }
 
         function hapusLibur(index) {
             if (!confirm('Hapus hari libur ini?')) return;
             liburData.splice(index, 1);
             callAppScript('saveLiburData', { data: liburData }, function() { renderLibur(); });
-            renderLibur();
         }
 
         // ================================================================
@@ -2388,8 +2237,10 @@ function callAppScript(fn, params, callback) {
             }
             callAppScript('saveAbsensiData', { data: absensiData }, function() {
                 updateDashboard();
+                loadPresensiSiswa();
             });
             updateDashboard();
+            loadPresensiSiswa();
         }
 
         function setJamDatang(nis) {
@@ -2500,7 +2351,7 @@ function callAppScript(fn, params, callback) {
             loadPresensiSiswa(); }
 
         // ================================================================
-        //  QR SCANNER
+        //  QR SCANNER (simulasi)
         // ================================================================
         function startScanner() {
             const container = document.getElementById('scannerContainer');
@@ -2524,14 +2375,12 @@ function callAppScript(fn, params, callback) {
                 status.textContent = '📷 Arahkan ke QR Code...';
                 status.className = 'scan-status';
 
-                // Simulate QR scan after 3 seconds (demo)
+                // Simulasi scan setelah 3 detik
                 setTimeout(() => {
                     if (scannerActive) {
                         status.textContent = '✅ QR Code terdeteksi! NIS: 2024001';
                         status.className = 'scan-status success';
-                        // Auto fill presensi
-                        const nis = '2024001';
-                        setJamDatang(nis);
+                        setJamDatang('2024001');
                         setTimeout(() => {
                             status.textContent = '📷 Arahkan ke QR Code...';
                             status.className = 'scan-status';
@@ -2565,7 +2414,7 @@ function callAppScript(fn, params, callback) {
         }
 
         // ================================================================
-        //  STUDENT PROFILE EDIT
+        //  STUDENT PROFILE
         // ================================================================
         function loadStudentProfile() {
             if (!currentUser || currentUser.role !== 'siswa') return;
@@ -2631,13 +2480,11 @@ function callAppScript(fn, params, callback) {
                 timestamp: new Date().toISOString()
             });
 
-            // Use QR code API (or generate locally)
             const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' +
                 encodeURIComponent(qrContent) + '&bgcolor=ffffff&color=1a3a6b';
             document.getElementById('qrImage').src = qrUrl;
             document.getElementById('qrNama').textContent = siswa.nama;
             document.getElementById('qrNIS').textContent = 'NIS: ' + siswa.nis;
-            qrCodeData = qrContent;
         }
 
         function downloadQR() {
@@ -2658,7 +2505,6 @@ function callAppScript(fn, params, callback) {
         // ================================================================
         function openModal(id) {
             document.getElementById(id).classList.add('open');
-            // Reset form for add
             if (id === 'modalSiswa') {
                 document.getElementById('siswaFormIndex').value = -1;
                 document.getElementById('siswaForm').reset();
@@ -2685,7 +2531,6 @@ function callAppScript(fn, params, callback) {
             document.getElementById(id).classList.remove('open');
         }
 
-        // Close modal on overlay click
         document.querySelectorAll('.modal-overlay').forEach(el => {
             el.addEventListener('click', function(e) {
                 if (e.target === this) {
@@ -2695,58 +2540,17 @@ function callAppScript(fn, params, callback) {
         });
 
         // ================================================================
-        //  MOCK APPS SCRIPT (for demo)
+        //  INIT ON LOAD
         // ================================================================
-        // This simulates Google Apps Script backend for local testing
-        window._mockAppScript = {
-            login: function(params) {
-                const { username, password, role } = params;
-                if (role === 'siswa') {
-                    const siswa = siswaData.find(s => s.nis === username && s.password === password);
-                    if (siswa) {
-                        return { success: true, user: { username, role: 'siswa', nama: siswa.nama, kelas: siswa
-                                .kelas } };
-                    }
-                } else {
-                    const guru = guruData.find(g => g.username === username && g.password === password);
-                    if (guru) {
-                        return { success: true, user: { username, role: 'guru', nama: guru.nama, kelas: guru
-                                .guruKelas } };
-                    }
-                }
-                return { success: false, message: 'NIS/NIP atau password salah!' };
-            },
-            getAllData: function() {
-                return { siswa: siswaData, guru: guruData, absensi: absensiData, jadwal: jadwalData, libur: liburData };
-            },
-            saveSiswaData: function(params) { siswaData = params.data; return { success: true }; },
-            saveGuruData: function(params) { guruData = params.data; return { success: true }; },
-            saveAbsensiData: function(params) { absensiData = params.data; return { success: true }; },
-            saveJadwalData: function(params) { jadwalData = params.data; return { success: true }; },
-            saveLiburData: function(params) { liburData = params.data; return { success: true }; },
-        };
-
-        // ================================================================
-        //  INIT
-        // ================================================================
-        // For demo, pre-populate mock data on load
         document.addEventListener('DOMContentLoaded', function() {
-            // If no data, mock will populate on loadAllData
-            // Check if user is already logged in (for demo skip)
-            // Show login page by default
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('appContainer').classList.remove('active');
-
-            // Set default role
             setRole('siswa');
-
-            // Preload data
             loadAllData();
         });
 
-        console.log('📚 Sistem Presensi Sekolah loaded.');
+        console.log('📚 Aplikasi Presensi Sekolah siap digunakan.');
         console.log('🔑 Demo login: Siswa (NIS: 12345, pass: 12345) | Guru (NIP: admin, pass: admin)');
     </script>
-
 </body>
 </html>
