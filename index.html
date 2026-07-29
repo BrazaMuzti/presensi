@@ -3,21 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistem Presensi - GitHub Pages</title>
+  <title>Scanner QR Presensi</title>
+  
+  <!-- Library Scan QR Code Cepat & Ringan -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
   <style>
     :root {
       --primary: #2563eb;
+      --success: #16a34a;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #1e293b;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 20px;
+      padding: 16px;
       display: flex;
       justify-content: center;
     }
@@ -26,73 +31,16 @@
       width: 100%;
       max-width: 480px;
       background: var(--card);
-      padding: 24px;
+      padding: 20px;
       border-radius: 16px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      box-sizing: border-box;
     }
 
     h2 {
       margin-top: 0;
       text-align: center;
       color: var(--primary);
-    }
-
-    .media-box {
-      position: relative;
-      width: 100%;
-      height: 280px;
-      background-color: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    video, img#preview {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    img#preview {
-      display: none;
-    }
-
-    canvas {
-      display: none;
-    }
-
-    .btn-group {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 20px;
-    }
-
-    button {
-      flex: 1;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background-color: var(--primary);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    button:hover {
-      opacity: 0.9;
-    }
-
-    button.secondary {
-      background-color: #64748b;
-    }
-
-    button:disabled {
-      background-color: #cbd5e1;
-      cursor: not-allowed;
     }
 
     .form-group {
@@ -102,198 +50,247 @@
     label {
       display: block;
       font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 4px;
+      font-weight: 600;
+      margin-bottom: 6px;
     }
 
-    input, select {
+    select, input {
       width: 100%;
       padding: 10px;
       border: 1px solid #cbd5e1;
-      border-radius: 6px;
+      border-radius: 8px;
+      font-size: 14px;
       box-sizing: border-box;
-      font-size: 14px;
     }
 
-    .alert {
+    /* Container Scanner QR */
+    #reader {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 2px solid #e2e8f0;
+      background-color: #000;
+      margin-bottom: 16px;
+    }
+
+    .status-card {
       padding: 12px;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 14px;
-      margin-top: 16px;
+      text-align: center;
+      font-weight: 500;
       display: none;
+      margin-top: 12px;
     }
 
-    .alert.success { background-color: #dcfce7; color: #166534; }
-    .alert.error { background-color: #fee2e2; color: #991b1b; }
+    .status-card.success { background-color: #dcfce7; color: #166534; display: block; }
+    .status-card.info { background-color: #dbeafe; color: #1e40af; display: block; }
+    .status-card.error { background-color: #fee2e2; color: #991b1b; display: block; }
+
+    .result-box {
+      background: #f1f5f9;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2>Presensi Siswa</h2>
+  <h2>Scan QR Presensi</h2>
 
-  <!-- Area Media (Video & Preview) -->
-  <div class="media-box">
-    <video id="webcam" autoplay playsinline muted></video>
-    <img id="preview" alt="Preview Foto">
-  </div>
-  
-  <canvas id="canvas"></canvas>
-
-  <div class="btn-group">
-    <button type="button" id="btnCapture">Ambil Foto</button>
-    <button type="button" id="btnRetake" class="secondary" style="display: none;">Foto Ulang</button>
+  <!-- Pilihan Kamera -->
+  <div class="form-group">
+    <label for="cameraSelect">Pilih Kamera:</label>
+    <select id="cameraSelect">
+      <option value="">Memuat kamera...</option>
+    </select>
   </div>
 
-  <!-- Form Data Presensi -->
-  <form id="presensiForm">
-    <div class="form-group">
-      <label for="nis">NIS</label>
-      <input type="text" id="nis" required placeholder="Masukkan NIS">
-    </div>
+  <!-- Area Video Scanner -->
+  <div id="reader"></div>
 
-    <div class="form-group">
-      <label for="nama">Nama Lengkap</label>
-      <input type="text" id="nama" required placeholder="Masukkan Nama">
-    </div>
+  <!-- Status Pengiriman -->
+  <div id="statusBox" class="status-card"></div>
 
-    <div class="form-group">
-      <label for="kelas">Kelas</label>
-      <input type="text" id="kelas" required placeholder="Contoh: XII RPL 1">
-    </div>
-
-    <div class="form-group">
-      <label for="status">Status Kehadiran</label>
-      <select id="status">
-        <option value="Hadir">Hadir</option>
-        <option value="Izin">Izin</option>
-        <option value="Sakit">Sakit</option>
-      </select>
-    </div>
-
-    <button type="submit" id="btnSubmit" disabled>Kirim Data Presensi</button>
-  </form>
-
-  <div id="alertBox" class="alert"></div>
+  <!-- Output Hasil Scan Terakhir -->
+  <div class="result-box" id="resultBox">
+    <strong>Hasil Scan Terakhir:</strong> <span id="scannedText">-</span>
+  </div>
 </div>
 
 <script>
   // GANTI URL INI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
   const GAS_URL = "https://script.google.com/macros/s/AKfycbyE66PPJj0gcgeHMbISyixOZKwF2_Y9rtUAG-rDlCjvhuh6l5yECqQj_At-LZsvlSZ9/exec";
 
-  const video = document.getElementById('webcam');
-  const preview = document.getElementById('preview');
-  const canvas = document.getElementById('canvas');
-  const btnCapture = document.getElementById('btnCapture');
-  const btnRetake = document.getElementById('btnRetake');
-  const btnSubmit = document.getElementById('btnSubmit');
-  const alertBox = document.getElementById('alertBox');
-  
-  let fotoBase64 = "";
+  let html5QrCode = null;
+  let isProcessing = false;
 
-  // 1. Inisialisasi Kamera
-  async function initCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
-        audio: false
-      });
-      video.srcObject = stream;
-    } catch (err) {
-      showAlert("Gagal mengakses kamera: " + err.message, "error");
-    }
+  // 1. Umpan balik suara Beep saat QR berhasil di-scan
+  function playBeep() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = "sine";
+    osc.frequency.value = 800;
+    gain.gain.value = 0.1;
+    osc.start();
+    setTimeout(() => {
+      osc.stop();
+      audioCtx.close();
+    }, 150);
   }
 
-  // 2. Ambil Foto dari Stream Video
-  btnCapture.addEventListener('click', () => {
-    const context = canvas.getContext('2d');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+  // 2. Fungsi Kirim Data ke Google Apps Script
+  async function kirimDataPresensi(qrContent) {
+    showStatus("Mengirim data presensi...", "info");
 
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // Konversi gambar ke format Base64 JPEG
-    fotoBase64 = canvas.toDataURL('image/jpeg', 0.8);
+    // Format data dari QR Code:
+    // Opsional: Jika QR berupa teks biasa (contoh: NIS) atau JSON string
+    let payloadData = {
+      nis: qrContent,
+      nama: "-",
+      kelas: "-",
+      status: "Hadir",
+      metode: "QR Code Scan"
+    };
 
-    // Tampilkan preview foto dan sembunyikan video
-    preview.src = fotoBase64;
-    preview.style.display = 'block';
-    video.style.display = 'none';
-
-    btnCapture.style.display = 'none';
-    btnRetake.style.display = 'block';
-    btnSubmit.disabled = false;
-  });
-
-  // 3. Foto Ulang
-  btnRetake.addEventListener('click', () => {
-    fotoBase64 = "";
-    preview.style.display = 'none';
-    video.style.display = 'block';
-
-    btnCapture.style.display = 'block';
-    btnRetake.style.display = 'none';
-    btnSubmit.disabled = true;
-  });
-
-  // 4. Kirim Data ke Google Apps Script
-  document.getElementById('presensiForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    if (!fotoBase64) {
-      showAlert("Silakan ambil foto terlebih dahulu!", "error");
-      return;
+    // Jika QR berisi JSON String (e.g. {"nis":"123", "nama":"Indra", "kelas":"XII"}), kita parse
+    try {
+      const parsed = JSON.parse(qrContent);
+      if (typeof parsed === 'object' && parsed !== null) {
+        payloadData = { ...payloadData, ...parsed };
+      }
+    } catch (e) {
+      // Jika bukan JSON, qrContent digunakan langsung sebagai NIS
     }
 
-    btnSubmit.disabled = true;
-    btnSubmit.innerText = "Mengirim...";
-
     const payload = {
-      presensiList: [
-        {
-          nis: document.getElementById('nis').value,
-          nama: document.getElementById('nama').value,
-          kelas: document.getElementById('kelas').value,
-          status: document.getElementById('status').value,
-          metode: "Webcam GitHub Pages",
-          foto: fotoBase64
-        }
-      ]
+      presensiList: [payloadData]
     };
 
     try {
       await fetch(GAS_URL, {
         method: 'POST',
-        mode: 'no-cors', // Menghindari batasan CORS di Google Apps Script
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        mode: 'no-cors', // Mencegah isu CORS Apps Script
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      showAlert("Data presensi berhasil dikirim!", "success");
-
-      // Reset Form & Kamera
-      document.getElementById('presensiForm').reset();
-      btnRetake.click();
-
+      showStatus("Presensi Berhasil Dicatat!", "success");
     } catch (err) {
       console.error(err);
-      showAlert("Terjadi kesalahan saat mengirim data.", "error");
+      showStatus("Gagal mengirim data presensi.", "error");
     } finally {
-      btnSubmit.innerText = "Kirim Data Presensi";
+      // Jeda 2,5 detik sebelum siap me-scan QR berikutnya (mencegah double-scan)
+      setTimeout(() => {
+        isProcessing = false;
+      }, 2500);
     }
-  });
-
-  function showAlert(msg, type) {
-    alertBox.innerText = msg;
-    alertBox.className = `alert ${type}`;
-    alertBox.style.display = 'block';
-    setTimeout(() => { alertBox.style.display = 'none'; }, 4000);
   }
 
-  // Jalankan kamera saat halaman selesai dimuat
-  window.addEventListener('DOMContentLoaded', initCamera);
+  // 3. Callback saat QR Code Berhasil Dikenali
+  function onScanSuccess(decodedText, decodedResult) {
+    if (isProcessing) return; // Abaikan jika sedang memproses scan sebelumnya
+    isProcessing = true;
+
+    playBeep();
+    document.getElementById('scannedText').innerText = decodedText;
+
+    // Kirim data ke backend GAS
+    kirimDataPresensi(decodedText);
+  }
+
+  // 4. Inisialisasi & Pengaturan Kamera
+  async function setupCamera() {
+    const cameraSelect = document.getElementById('cameraSelect');
+
+    try {
+      const devices = await Html5Qrcode.getCameras();
+
+      if (devices && devices.length > 0) {
+        cameraSelect.innerHTML = "";
+        
+        // Buat opsi pilihan kamera
+        devices.forEach((device, index) => {
+          const option = document.createElement('option');
+          option.value = device.id;
+          
+          // Penamaan label kamera (Kamera Depan / Belakang)
+          let label = device.label || `Kamera ${index + 1}`;
+          if (label.toLowerCase().includes('back') || label.toLowerCase().includes('rear')) {
+            label = `Kamera Belakang (${label})`;
+          } else if (label.toLowerCase().includes('front')) {
+            label = `Kamera Depan (${label})`;
+          }
+          
+          option.text = label;
+          cameraSelect.appendChild(option);
+        });
+
+        // Utamakan memilih Kamera Belakang (Environment) secara otomatis
+        let defaultCameraId = devices[0].id;
+        const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
+        if (backCamera) {
+          defaultCameraId = backCamera.id;
+          cameraSelect.value = defaultCameraId;
+        }
+
+        // Mulai scanner dengan kamera terpilih
+        startScanner(defaultCameraId);
+
+        // Event saat pengguna mengganti kamera dari dropdown
+        cameraSelect.addEventListener('change', (e) => {
+          if (e.target.value) {
+            startScanner(e.target.value);
+          }
+        });
+
+      } else {
+        showStatus("Kamera tidak ditemukan pada perangkat ini.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showStatus("Izin akses kamera ditolak atau tidak didukung.", "error");
+    }
+  }
+
+  // 5. Jalankan Engine Scanner
+  async function startScanner(cameraId) {
+    if (!html5QrCode) {
+      html5QrCode = new Html5Qrcode("reader");
+    } else {
+      await html5QrCode.stop();
+    }
+
+    const config = {
+      fps: 15, // Kecepatan pembacaan (frame per second)
+      qrbox: { width: 220, height: 220 }, // Area fokus kotak scan
+      aspectRatio: 1.0
+    };
+
+    html5QrCode.start(
+      cameraId,
+      config,
+      onScanSuccess,
+      () => {} // Callback saat frame tidak menemukan QR (dibiarkan kosong)
+    ).catch(err => {
+      showStatus("Gagal membuka kamera terpilih.", "error");
+    });
+  }
+
+  function showStatus(msg, type) {
+    const box = document.getElementById('statusBox');
+    box.innerText = msg;
+    box.className = `status-card ${type}`;
+  }
+
+  // Jalankan inisialisasi setelah DOM siap
+  window.addEventListener('DOMContentLoaded', setupCamera);
 </script>
 
 </body>
