@@ -1570,25 +1570,29 @@
         // ================================================================
         //  GOOGLE APPS SCRIPT COMMUNICATION
         // ================================================================
-        function callAppScript(fn, params, callback) {
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbxthfUoz5T12l8T63wafSaYG9BbFwjkFfMyhsJGj2YJvtkqR8KYmFkpBFp79H7bfSz1/exec';
-            fetch(scriptUrl, {
-                method: 'POST',
-                mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: fn, params: params })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (callback) callback(data);
-            })
-            .catch(error => {
-                console.error('Error calling Apps Script:', error);
-                if (callback) callback(null);
-            });
+function callAppScript(fn, params, callback) {
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbxthfUoz5T12l8T63wafSaYG9BbFwjkFfMyhsJGj2YJvtkqR8KYmFkpBFp79H7bfSz1/exec';
+    fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: fn, params: params })
+    })
+    .then(response => response.text()) // ambil sebagai text dulu
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (callback) callback(data);
+        } catch (e) {
+            console.error('Gagal parsing JSON:', text);
+            if (callback) callback(null);
         }
+    })
+    .catch(error => {
+        console.error('Error calling Apps Script:', error);
+        if (callback) callback(null);
+    });
+}
 
         // ================================================================
         //  AUTH
@@ -1602,32 +1606,33 @@
             document.getElementById('usernameInput').placeholder = role === 'siswa' ? 'Masukkan NIS' : 'Masukkan NIP';
         }
 
-        function handleLogin(e) {
-            e.preventDefault();
-            const username = document.getElementById('usernameInput').value.trim();
-            const password = document.getElementById('passwordInput').value.trim();
-            const errorEl = document.getElementById('loginError');
+function handleLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value.trim();
+    const errorEl = document.getElementById('loginError');
 
-            if (!username || !password) {
-                errorEl.textContent = '❌ Harap isi semua field!';
-                errorEl.style.display = 'block';
-                return;
-            }
+    if (!username || !password) {
+        errorEl.textContent = '❌ Harap isi semua field!';
+        errorEl.style.display = 'block';
+        return;
+    }
 
-            callAppScript('login', { username, password, role: loginRole }, function(result) {
-                if (result && result.success) {
-                    currentUser = result.user;
-                    errorEl.style.display = 'none';
-                    document.getElementById('loginPage').style.display = 'none';
-                    document.getElementById('appContainer').classList.add('active');
-                    initApp();
-                } else {
-                    errorEl.textContent = '❌ ' + (result ? result.message : 'NIS/NIP atau password salah!');
-                    errorEl.style.display = 'block';
-                }
-            });
+    callAppScript('login', { username, password, role: loginRole }, function(result) {
+        console.log('Login response:', result);
+        if (result && result.success && result.user) {
+            currentUser = result.user;
+            errorEl.style.display = 'none';
+            document.getElementById('loginPage').style.display = 'none';
+            document.getElementById('appContainer').classList.add('active');
+            initApp();
+        } else {
+            const msg = result && result.message ? result.message : 'NIS/NIP atau password salah!';
+            errorEl.textContent = '❌ ' + msg;
+            errorEl.style.display = 'block';
         }
-
+    });
+}
         function logout() {
             if (confirm('Yakin ingin keluar?')) {
                 currentUser = null;
