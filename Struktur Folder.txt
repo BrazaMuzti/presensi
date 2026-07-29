@@ -16,9 +16,3 @@ presensi-sekolah/
 ├── appscript/
 │   └── Code.gs
 └── README.md
-
-🔐 Login Demo
-Role	Username	Password
-Admin	admin	admin123
-Guru	guru	guru123
-Siswa	siswa	siswa123
