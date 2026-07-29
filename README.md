@@ -1,2 +1,0 @@
-# presensi
-presensi sekolah
