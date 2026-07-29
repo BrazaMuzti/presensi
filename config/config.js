@@ -7,7 +7,7 @@ const APP_CONFIG = {
     
     // Ganti dengan URL Web App setelah deploy
     // Format: https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-    WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbyy8oXQvccH0LtwizhVzA35amPQ8E-LeXIXnb2KlN1QfZHFaop-VtgXT8Pmec2E-BV5/exec',
+    WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbyrr-s7LhNP_3suBtjkgp6H4j6MTJHur0dmgHyBR2EsFHkZCVY80l47CQNpx0S_RPbD/exec',
     
     // Nama Sheet
     SHEETS: {
