@@ -1570,29 +1570,29 @@
         // ================================================================
         //  GOOGLE APPS SCRIPT COMMUNICATION
         // ================================================================
-function callAppScript(fn, params, callback) {
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbxthfUoz5T12l8T63wafSaYG9BbFwjkFfMyhsJGj2YJvtkqR8KYmFkpBFp79H7bfSz1/exec';
-    fetch(scriptUrl, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: fn, params: params })
-    })
-    .then(response => response.text()) // ambil sebagai text dulu
-    .then(text => {
-        try {
-            const data = JSON.parse(text);
-            if (callback) callback(data);
-        } catch (e) {
-            console.error('Gagal parsing JSON:', text);
-            if (callback) callback(null);
+        function callAppScript(fn, params, callback) {
+            const scriptUrl = 'https://script.google.com/macros/s/AKfycbz05Wu566K3tdAO524H_7f96ytkSFYX_ailzBbxS_JKxFx7ovcKCzKS0EcG760Ph1DA/exec';
+            fetch(scriptUrl, {
+                method: 'POST',
+                mode: 'cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: fn, params: params })
+            })
+            .then(response => response.text()) // ambil sebagai text dulu
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    if (callback) callback(data);
+                } catch (e) {
+                    console.error('Gagal parsing JSON dari Apps Script:', text);
+                    if (callback) callback(null);
+                }
+            })
+            .catch(error => {
+                console.error('Error calling Apps Script:', error);
+                if (callback) callback(null);
+            });
         }
-    })
-    .catch(error => {
-        console.error('Error calling Apps Script:', error);
-        if (callback) callback(null);
-    });
-}
 
         // ================================================================
         //  AUTH
@@ -1606,33 +1606,34 @@ function callAppScript(fn, params, callback) {
             document.getElementById('usernameInput').placeholder = role === 'siswa' ? 'Masukkan NIS' : 'Masukkan NIP';
         }
 
-function handleLogin(e) {
-    e.preventDefault();
-    const username = document.getElementById('usernameInput').value.trim();
-    const password = document.getElementById('passwordInput').value.trim();
-    const errorEl = document.getElementById('loginError');
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('usernameInput').value.trim();
+            const password = document.getElementById('passwordInput').value.trim();
+            const errorEl = document.getElementById('loginError');
 
-    if (!username || !password) {
-        errorEl.textContent = '❌ Harap isi semua field!';
-        errorEl.style.display = 'block';
-        return;
-    }
+            if (!username || !password) {
+                errorEl.textContent = '❌ Harap isi semua field!';
+                errorEl.style.display = 'block';
+                return;
+            }
 
-    callAppScript('login', { username, password, role: loginRole }, function(result) {
-        console.log('Login response:', result);
-        if (result && result.success && result.user) {
-            currentUser = result.user;
-            errorEl.style.display = 'none';
-            document.getElementById('loginPage').style.display = 'none';
-            document.getElementById('appContainer').classList.add('active');
-            initApp();
-        } else {
-            const msg = result && result.message ? result.message : 'NIS/NIP atau password salah!';
-            errorEl.textContent = '❌ ' + msg;
-            errorEl.style.display = 'block';
+            callAppScript('login', { username, password, role: loginRole }, function(result) {
+                console.log('Login response:', result);
+                if (result && result.success && result.user) {
+                    currentUser = result.user;
+                    errorEl.style.display = 'none';
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('appContainer').classList.add('active');
+                    initApp();
+                } else {
+                    const msg = result && result.message ? result.message : 'NIS/NIP atau password salah!';
+                    errorEl.textContent = '❌ ' + msg;
+                    errorEl.style.display = 'block';
+                }
+            });
         }
-    });
-}
+
         function logout() {
             if (confirm('Yakin ingin keluar?')) {
                 currentUser = null;
@@ -1649,6 +1650,11 @@ function handleLogin(e) {
         //  INIT
         // ================================================================
         function initApp() {
+            if (!currentUser) {
+                alert('Sesi tidak valid. Silakan login ulang.');
+                logout();
+                return;
+            }
             // Update user info
             document.getElementById('userName').textContent = currentUser.nama || currentUser.username;
             document.getElementById('userRole').textContent = currentUser.role === 'siswa' ? 'Siswa' : 'Guru / Admin';
@@ -1822,7 +1828,8 @@ function handleLogin(e) {
             const limit = parseInt(document.getElementById('siswaFilterShow').value) || 20;
 
             let filtered = siswaData.filter(s => {
-                const matchSearch = s.nis.toLowerCase().includes(search) || s.nama.toLowerCase().includes(search);
+                const matchSearch = (s.nis || '').toLowerCase().includes(search) || (s.nama || '').toLowerCase()
+                .includes(search);
                 const matchKelas = !kelas || s.kelas === kelas;
                 return matchSearch && matchKelas;
             });
@@ -1836,8 +1843,8 @@ function handleLogin(e) {
             const paginated = filtered.slice(0, limit);
             tbody.innerHTML = paginated.map((s, i) => `
                     <tr>
-                        <td><strong>${s.nis}</strong></td>
-                        <td>${s.nama}</td>
+                        <td><strong>${s.nis || '-'}</strong></td>
+                        <td>${s.nama || '-'}</td>
                         <td><span class="badge badge-info">${s.kelas || '-'}</span></td>
                         <td>${s.jk || '-'}</td>
                         <td>${s.hp || '-'}</td>
@@ -1941,7 +1948,8 @@ function handleLogin(e) {
             const limit = parseInt(document.getElementById('guruFilterShow').value) || 20;
 
             let filtered = guruData.filter(g => {
-                const matchSearch = g.username.toLowerCase().includes(search) || g.nama.toLowerCase().includes(search);
+                const matchSearch = (g.username || '').toLowerCase().includes(search) || (g.nama || '').toLowerCase()
+                    .includes(search);
                 const matchKelas = !kelas || g.guruKelas === kelas;
                 return matchSearch && matchKelas;
             });
@@ -1956,8 +1964,8 @@ function handleLogin(e) {
             tbody.innerHTML = paginated.map((g, i) => `
                     <tr>
                         <td>${i + 1}</td>
-                        <td><strong>${g.username}</strong></td>
-                        <td>${g.nama}</td>
+                        <td><strong>${g.username || '-'}</strong></td>
+                        <td>${g.nama || '-'}</td>
                         <td><span class="guru-kelas-badge">${g.guruKelas || '-'}</span></td>
                         <td>
                             <button class="btn btn-primary btn-xs" onclick="editGuru(${guruData.indexOf(g)})"><i class="fas fa-edit"></i></button>
@@ -2028,7 +2036,8 @@ function handleLogin(e) {
             const bulan = parseInt(document.getElementById('laporanFilterBulan').value) || 0;
 
             let filtered = absensiData.filter(a => {
-                const matchSearch = a.nis.toLowerCase().includes(search) || a.nama.toLowerCase().includes(search);
+                const matchSearch = (a.nis || '').toLowerCase().includes(search) || (a.nama || '').toLowerCase()
+                    .includes(search);
                 const matchKelas = !kelas || a.kelas === kelas;
                 let matchBulan = true;
                 if (bulan > 0) {
@@ -2086,9 +2095,9 @@ function handleLogin(e) {
             }
             tbody.innerHTML = jadwalData.map((j, i) => `
                     <tr>
-                        <td><strong>${j.mapel}</strong></td>
-                        <td>${j.jamDatang}</td>
-                        <td>${j.jamSelesai}</td>
+                        <td><strong>${j.mapel || '-'}</strong></td>
+                        <td>${j.jamDatang || '-'}</td>
+                        <td>${j.jamSelesai || '-'}</td>
                         <td><span class="badge badge-secondary">${j.kelas || 'Semua'}</span></td>
                         <td>
                             <button class="btn btn-danger btn-xs" onclick="hapusJadwal(${i})"><i class="fas fa-trash"></i></button>
@@ -2134,8 +2143,8 @@ function handleLogin(e) {
             liburData.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
             tbody.innerHTML = liburData.map((l, i) => `
                     <tr>
-                        <td>${l.tanggal}</td>
-                        <td>${l.keterangan}</td>
+                        <td>${l.tanggal || '-'}</td>
+                        <td>${l.keterangan || '-'}</td>
                         <td>
                             <button class="btn btn-danger btn-xs" onclick="hapusLibur(${i})"><i class="fas fa-trash"></i></button>
                         </td>
