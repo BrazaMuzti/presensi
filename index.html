@@ -21,6 +21,473 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col">
 
+  <script>
+    // ==============================================
+    // KONFIGURASI API (URL DARI GOOGLE APPS SCRIPT)
+    // ==============================================
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxi7vgQIaHl-PkbQy_x-Vp1rkhp2JmjbRZ6lDjGnhGMAKQG3OdqBZWridswZxMcVvZM/exec";
+
+    // Fungsi fetch untuk komunikasi dengan App Script
+    async function fetchAPI(action, payload = {}) {
+      try {
+        const response = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          body: JSON.stringify({ action: action, ...payload }),
+          // Menggunakan text/plain agar tidak memicu block preflight CORS dari browser
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+        });
+        return await response.json();
+      } catch (error) {
+        console.error("API Error:", error);
+        alert("Terjadi kesalahan koneksi ke server database.");
+        return null;
+      }
+    }
+
+    // State Global Variable
+    let currentUser = {};
+    let globalSiswaData = [];
+    let globalGuruData = [];
+    let globalPresensiData = [];
+    let html5QrcodeScanner = null;
+    let statChartInstance = null;
+    let isScanCooldown = false;
+
+    // 1. ROUTING & ACCESS CONTROL
+    function showSection(sectionId) {
+      const adminOnlySections = ['dataSiswaView', 'dataGuruView', 'kelolaAbsenView', 'manualAbsenView', 'aturJadwalView', 'laporanView', 'scanView'];
+      if(currentUser.role === 'siswa' && adminOnlySections.includes(sectionId)) {
+         alert("Akses Ditolak! Fitur ini khusus Guru / Admin.");
+         return;
+      }
+      document.querySelectorAll('.view-section').forEach(sec => { sec.classList.remove('block'); sec.classList.add('hidden'); });
+      const target = document.getElementById(sectionId);
+      if(target) { target.classList.remove('hidden'); target.classList.add('block'); }
+    }
+
+    function navigateHome() {
+      if(currentUser.role === 'siswa') showSection('studentProfileView');
+      else showSection('dashboardView');
+    }
+
+    // 2. AUTHENTICATION
+    function handleLogin(e) {
+      e.preventDefault();
+      const u = document.getElementById('username').value;
+      const p = document.getElementById('password').value;
+      const btn = document.getElementById('btnLogin');
+      btn.innerText = 'Memeriksa...';
+
+      fetchAPI('prosesLogin', { username: u, password: p }).then(res => {
+        if(!res) { btn.innerText = 'Masuk'; return; }
+        if(res.success) {
+          currentUser = res;
+          document.getElementById('loginPage').classList.add('hidden');
+          document.getElementById('mainDashboard').classList.remove('hidden');
+          document.getElementById('userNameDisplay').innerText = res.nama;
+          document.getElementById('userRoleBadge').innerText = res.role.toUpperCase();
+
+          if(res.role === 'siswa') {
+            document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'none');
+            showSection('studentProfileView');
+            renderStudentProfile();
+          } else {
+            document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'flex');
+            showSection('dashboardView');
+            preloadDataAll();
+          }
+        } else {
+          document.getElementById('loginMsg').innerText = res.message;
+          document.getElementById('loginMsg').classList.remove('hidden');
+          btn.innerText = 'Masuk';
+        }
+      });
+    }
+
+    function logout() {
+      currentUser = {}; stopScanner();
+      document.getElementById('mainDashboard').classList.add('hidden');
+      document.getElementById('loginPage').classList.remove('hidden');
+    }
+
+    // 3. PRELOAD & DATA REFRESH
+    function preloadDataAll() {
+      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => {
+        globalSiswaData = data; populateKelasDropdowns(); renderSiswaTable();
+      });
+      fetchAPI('getSheetData', { sheetName: 'Guru' }).then(data => {
+        globalGuruData = data; renderGuruTable();
+      });
+      fetchAPI('getSheetData', { sheetName: 'Presensi' }).then(data => {
+        globalPresensiData = data; updateStatistikUI(); renderLaporanTable();
+      });
+    }
+
+    function populateKelasDropdowns() {
+      const kelasSet = new Set();
+      for(let i=1; i<globalSiswaData.length; i++) { if(globalSiswaData[i][2]) kelasSet.add(globalSiswaData[i][2]); }
+      const kelasArray = Array.from(kelasSet).sort();
+      const selects = ['statFilterKelas', 'scanSelectKelas', 'massKelasSelect', 'filterSiswaKelasTable', 'lapFilterKelas', 'batchFormKelas'];
+      
+      selects.forEach(id => {
+        const el = document.getElementById(id);
+        if(!el) return;
+        const currentVal = el.value;
+        el.innerHTML = id.includes('Filter') ? '<option value="">Semua Kelas</option>' : '<option value="">-- Pilih Kelas --</option>';
+        kelasArray.forEach(k => { el.innerHTML += `<option value="${k}">${k}</option>`; });
+        el.value = currentVal;
+      });
+    }
+
+    // 4. STATISTIK & CHART
+    function updateStatistikUI() {
+      const selectedKelas = document.getElementById('statFilterKelas').value;
+      const selectedBulan = document.getElementById('statFilterBulan').value;
+      let cHadir = 0, cSakit = 0, cIzin = 0, cAlfa = 0;
+
+      for(let i=1; i<globalPresensiData.length; i++) {
+        const row = globalPresensiData[i];
+        const tgl = row[0] || '';
+        const kelas = row[3] || '';
+        const status = (row[4] || '').toLowerCase();
+
+        if(selectedKelas && kelas !== selectedKelas) continue;
+        if(selectedBulan && !tgl.includes(selectedBulan)) continue;
+
+        if(status === 'hadir') cHadir++;
+        else if(status === 'sakit') cSakit++;
+        else if(status === 'izin') cIzin++;
+        else if(status === 'alfa') cAlfa++;
+      }
+
+      document.getElementById('statHadir').innerText = cHadir;
+      document.getElementById('statSakit').innerText = cSakit;
+      document.getElementById('statIzin').innerText = cIzin;
+      document.getElementById('statAlfa').innerText = cAlfa;
+      renderChart(cHadir, cSakit, cIzin, cAlfa);
+    }
+
+    function renderChart(h, s, i, a) {
+      const ctx = document.getElementById('statChart').getContext('2d');
+      if(statChartInstance) statChartInstance.destroy();
+      statChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: ['Hadir', 'Sakit', 'Izin', 'Alfa'], datasets: [{ data: [h, s, i, a], backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#ef4444'] }] },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+    // 5. SCANNER KAMERA OTOMATIS
+    function initScanner() { startCameraScan('environment'); }
+
+    function startCameraScan(facingMode) {
+      stopScanner().then(() => {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        const config = { fps: 15, qrbox: { width: 220, height: 220 } };
+
+        html5QrcodeScanner.start({ facingMode: facingMode }, config,
+          (decodedText) => {
+            if (isScanCooldown) return;
+            isScanCooldown = true;
+            processQRScan(decodedText);
+            setTimeout(() => { isScanCooldown = false; }, 2500); 
+          }, (errorMessage) => {}
+        ).catch(err => {
+          html5QrcodeScanner.start({ facingMode: 'user' }, config,
+            (decodedText) => {
+              if (isScanCooldown) return;
+              isScanCooldown = true;
+              processQRScan(decodedText);
+              setTimeout(() => { isScanCooldown = false; }, 2500);
+            }, (err) => {}
+          ).catch(e => alert("Kamera tidak dapat diakses! Pastikan izin kamera browser diberikan. Error: " + e));
+        });
+      });
+    }
+
+    function stopScanner() {
+      return new Promise((resolve) => {
+        if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+          html5QrcodeScanner.stop().then(() => { html5QrcodeScanner.clear(); html5QrcodeScanner = null; resolve(); })
+          .catch(() => { html5QrcodeScanner = null; resolve(); });
+        } else { html5QrcodeScanner = null; resolve(); }
+      });
+    }
+
+    function uploadQR(input) {
+      if(!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const scanner = new Html5Qrcode("reader");
+      scanner.scanFile(file, true).then(decodedText => { processQRScan(decodedText); })
+      .catch(err => alert("Gagal membaca QR Code dari file gambar."));
+    }
+
+    function processQRScan(nis) {
+      let student = null;
+      for(let i=1; i<globalSiswaData.length; i++) {
+        if(String(globalSiswaData[i][0]).trim() === String(nis).trim()) {
+          student = { nis: globalSiswaData[i][0], nama: globalSiswaData[i][1], kelas: globalSiswaData[i][2] }; break;
+        }
+      }
+      if(!student) return alert("Siswa dengan NIS: " + nis + " tidak ditemukan!");
+
+      const list = [{ nis: student.nis, nama: student.nama, kelas: student.kelas, status: 'Hadir', metode: 'QR Code Scanner' }];
+      fetchAPI('savePresensiBatch', { presensiList: list }).then(res => {
+        if(res) { alert(res.message + " (" + student.nama + ")"); preloadDataAll(); }
+      });
+    }
+
+    function filterSiswaByKelasScan() {
+      const k = document.getElementById('scanSelectKelas').value;
+      const sSelect = document.getElementById('scanSelectSiswa');
+      sSelect.innerHTML = '<option value="">-- Pilih Siswa --</option>';
+      for(let i=1; i<globalSiswaData.length; i++) {
+        if(globalSiswaData[i][2] === k) sSelect.innerHTML += `<option value="${i}">${globalSiswaData[i][0]} - ${globalSiswaData[i][1]}</option>`;
+      }
+    }
+
+    function submitPresensiSingle(e) {
+      e.preventDefault();
+      const idx = document.getElementById('scanSelectSiswa').value;
+      if(!idx) return alert("Pilih siswa!");
+      const row = globalSiswaData[idx];
+      const status = document.getElementById('scanSelectStatus').value;
+      const ket = document.getElementById('scanKeterangan').value;
+
+      const list = [{ nis: row[0], nama: row[1], kelas: row[2], status: status, metode: 'Manual Form', keterangan: ket }];
+      fetchAPI('savePresensiBatch', { presensiList: list }).then(res => {
+        if(res) { alert(res.message); document.getElementById('scanKeterangan').value = ''; preloadDataAll(); }
+      });
+    }
+
+    function absenSemuaHadir() {
+      const k = document.getElementById('massKelasSelect').value;
+      if(!k) return alert("Pilih kelas terlebih dahulu!");
+      const list = [];
+      for(let i=1; i<globalSiswaData.length; i++) {
+        if(globalSiswaData[i][2] === k) list.push({ nis: globalSiswaData[i][0], nama: globalSiswaData[i][1], kelas: globalSiswaData[i][2], status: 'Hadir', metode: 'Absen Massal' });
+      }
+      if(list.length === 0) return alert("Siswa tidak ditemukan di kelas ini.");
+      
+      if(confirm(`Yakin ingin menyetel HADIR untuk ${list.length} siswa kelas ${k}?`)) {
+        fetchAPI('savePresensiBatch', { presensiList: list }).then(res => {
+          if(res) { alert(res.message); preloadDataAll(); }
+        });
+      }
+    }
+
+    // 6. FORM PRESENSI MANUAL BATCH
+    function initManualAbsenPage() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('batchFormTanggal').value = today;
+      populateKelasDropdowns();
+    }
+
+    function renderBatchPresensiForm() {
+      const k = document.getElementById('batchFormKelas').value;
+      const tbody = document.getElementById('tbodyBatchManual');
+      tbody.innerHTML = '';
+      if(!k) return;
+
+      let count = 0;
+      for(let i=1; i<globalSiswaData.length; i++) {
+        if(globalSiswaData[i][2] === k) {
+          count++;
+          tbody.innerHTML += `
+            <tr class="border-b text-xs" data-nis="${globalSiswaData[i][0]}" data-nama="${globalSiswaData[i][1]}" data-kelas="${globalSiswaData[i][2]}">
+              <td class="p-2 font-mono">${globalSiswaData[i][0]}</td>
+              <td class="p-2 font-bold">${globalSiswaData[i][1]}</td>
+              <td class="p-2"><select class="batch-status border p-1 rounded"><option value="Hadir">Hadir</option><option value="Sakit">Sakit</option><option value="Izin">Izin</option><option value="Alfa">Alfa</option></select></td>
+              <td class="p-2"><input type="text" class="batch-ket border p-1 rounded w-full" placeholder="Keterangan"></td>
+            </tr>`;
+        }
+      }
+      if(count === 0) tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">Siswa tidak ditemukan</td></tr>';
+    }
+
+    function simpanBatchPresensiManual() {
+      const tgl = document.getElementById('batchFormTanggal').value;
+      if(!tgl) return alert("Pilih tanggal presensi!");
+
+      const trs = document.querySelectorAll('#tbodyBatchManual tr[data-nis]');
+      const list = [];
+      trs.forEach(tr => {
+        list.push({ tanggal: tgl, nis: tr.getAttribute('data-nis'), nama: tr.getAttribute('data-nama'), kelas: tr.getAttribute('data-kelas'), status: tr.querySelector('.batch-status').value, keterangan: tr.querySelector('.batch-ket').value, metode: 'Manual Batch' });
+      });
+
+      if(list.length === 0) return alert("Pilih kelas dan pastikan ada siswa!");
+      fetchAPI('savePresensiBatch', { presensiList: list }).then(res => {
+        if(res) { alert(res.message); preloadDataAll(); }
+      });
+    }
+
+    // 7. PROFILE SISWA & EDIT MANDIRI
+    function renderStudentProfile() {
+      document.getElementById('profileName').innerText = currentUser.nama;
+      document.getElementById('profileNIS').innerText = currentUser.NIS;
+      document.getElementById('profileKelas').innerText = currentUser.kelas;
+
+      document.getElementById('selfTglLahir').value = currentUser.tglLahir || '';
+      document.getElementById('selfNoHp').value = currentUser.noHp || '';
+      document.getElementById('selfEskul').value = currentUser.eskul || '';
+      document.getElementById('selfOrangTua').value = currentUser.orangTua || '';
+      document.getElementById('selfAlamat').value = currentUser.alamat || '';
+      document.getElementById('selfKeterangan').value = currentUser.keterangan || '';
+      document.getElementById('selfPassword').value = '';
+
+      const qrContainer = document.getElementById("qrcodeContainer");
+      qrContainer.innerHTML = "";
+      new QRCode(qrContainer, { text: String(currentUser.NIS), width: 150, height: 150 });
+    }
+
+    function saveSelfProfile(e) {
+      e.preventDefault();
+      const pData = {
+        tglLahir: document.getElementById('selfTglLahir').value, noHp: document.getElementById('selfNoHp').value,
+        eskul: document.getElementById('selfEskul').value, orangTua: document.getElementById('selfOrangTua').value,
+        alamat: document.getElementById('selfAlamat').value, keterangan: document.getElementById('selfKeterangan').value,
+        password: document.getElementById('selfPassword').value
+      };
+
+      fetchAPI('updateStudentSelfProfile', { nis: currentUser.NIS, p: pData }).then(res => {
+        if(res) {
+          alert(res.message);
+          if(pData.password) currentUser.password = pData.password;
+          currentUser.tglLahir = pData.tglLahir; currentUser.noHp = pData.noHp; currentUser.eskul = pData.eskul;
+          currentUser.orangTua = pData.orangTua; currentUser.alamat = pData.alamat; currentUser.keterangan = pData.keterangan;
+        }
+      });
+    }
+
+    // 8. DATA SISWA & GURU
+    function loadDataSiswa() {
+      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => {
+        if(data) { globalSiswaData = data; populateKelasDropdowns(); renderSiswaTable(); }
+      });
+    }
+
+    function renderSiswaTable() {
+      const tbody = document.getElementById('tbodySiswa');
+      const kFilter = document.getElementById('filterSiswaKelasTable').value;
+      tbody.innerHTML = '';
+      for(let i=1; i<globalSiswaData.length; i++) {
+        const nis = globalSiswaData[i][0], nama = globalSiswaData[i][1], kelas = globalSiswaData[i][2];
+        if(kFilter && kelas !== kFilter) continue;
+        tbody.innerHTML += `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-2 font-mono">${nis}</td><td class="p-2 font-semibold">${nama}</td><td class="p-2">${kelas}</td>
+            <td class="p-2 text-center flex justify-center gap-2">
+              <button onclick="openModalSiswa(${i})" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="hapusRow('Siswa', ${i})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+            </td></tr>`;
+      }
+    }
+
+    function openModalSiswa(dataIndex = null) {
+      const isEdit = dataIndex !== null;
+      const cur = isEdit ? globalSiswaData[dataIndex] : ['', '', '', '123456', '', '', '', '', '', ''];
+      document.getElementById('modalTitle').innerText = isEdit ? 'Edit Data Siswa' : 'Tambah Data Siswa';
+      document.getElementById('modalBody').innerHTML = `
+        <div><label class="block text-xs font-semibold text-slate-600">NIS</label><input type="text" id="mNis" value="${cur[0]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Nama</label><input type="text" id="mNama" value="${cur[1]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Kelas</label><input type="text" id="mKelas" value="${cur[2]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Password</label><input type="password" id="mPass" value="${cur[3] || '123456'}" class="w-full border p-2 rounded text-sm"></div>`;
+      
+      document.getElementById('modalSaveBtn').onclick = () => {
+        const row = [ document.getElementById('mNis').value, document.getElementById('mNama').value, document.getElementById('mKelas').value, document.getElementById('mPass').value, cur[4]||'', cur[5]||'', cur[6]||'', cur[7]||'', cur[8]||'', cur[9]||'' ];
+        const apiAction = isEdit ? 'updateDataRow' : 'addDataRow';
+        fetchAPI(apiAction, { sheetName: 'Siswa', dataIndex: dataIndex, rowData: row }).then(res => { if(res) { alert(res.message); closeModal(); loadDataSiswa(); } });
+      };
+      document.getElementById('modalForm').classList.remove('hidden'); document.getElementById('modalForm').classList.add('flex');
+    }
+
+    function loadDataGuru() {
+      fetchAPI('getSheetData', { sheetName: 'Guru' }).then(data => { if(data) { globalGuruData = data; renderGuruTable(); } });
+    }
+
+    function renderGuruTable() {
+      const tbody = document.getElementById('tbodyGuru'); tbody.innerHTML = '';
+      for(let i=1; i<globalGuruData.length; i++) {
+        tbody.innerHTML += `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-2 font-mono">${globalGuruData[i][0]}</td><td class="p-2 font-semibold">${globalGuruData[i][1]}</td><td class="p-2">${globalGuruData[i][3] || 'guru'}</td>
+            <td class="p-2 text-center flex justify-center gap-2">
+              <button onclick="openModalGuru(${i})" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="hapusRow('Guru', ${i})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
+            </td></tr>`;
+      }
+    }
+
+    function openModalGuru(dataIndex = null) {
+      const isEdit = dataIndex !== null;
+      const cur = isEdit ? globalGuruData[dataIndex] : ['', '', '123456', 'guru'];
+      document.getElementById('modalTitle').innerText = isEdit ? 'Edit Data Guru' : 'Tambah Data Guru';
+      document.getElementById('modalBody').innerHTML = `
+        <div><label class="block text-xs font-semibold text-slate-600">NIP/Username</label><input type="text" id="mNip" value="${cur[0]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Nama Guru</label><input type="text" id="mNamaG" value="${cur[1]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Password</label><input type="password" id="mPassG" value="${cur[2]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Role</label>
+          <select id="mRoleG" class="w-full border p-2 rounded text-sm"><option value="guru" ${cur[3]==='guru'?'selected':''}>Guru</option><option value="admin" ${cur[3]==='admin'?'selected':''}>Admin</option></select>
+        </div>`;
+      document.getElementById('modalSaveBtn').onclick = () => {
+        const row = [ document.getElementById('mNip').value, document.getElementById('mNamaG').value, document.getElementById('mPassG').value, document.getElementById('mRoleG').value ];
+        const apiAction = isEdit ? 'updateDataRow' : 'addDataRow';
+        fetchAPI(apiAction, { sheetName: 'Guru', dataIndex: dataIndex, rowData: row }).then(res => { if(res) { alert(res.message); closeModal(); loadDataGuru(); } });
+      };
+      document.getElementById('modalForm').classList.remove('hidden'); document.getElementById('modalForm').classList.add('flex');
+    }
+
+    function hapusRow(sheetName, index) {
+      if(confirm(`Yakin hapus data dari sheet ${sheetName}?`)) {
+        fetchAPI('deleteDataRow', { sheetName: sheetName, dataIndex: index }).then(res => {
+          if(res) { alert(res.message); if(sheetName === 'Siswa') loadDataSiswa(); if(sheetName === 'Guru') loadDataGuru(); }
+        });
+      }
+    }
+
+    function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('modalForm').classList.remove('flex'); }
+
+    // 9. LAPORAN TABLE
+    function loadLaporanData() {
+      fetchAPI('getSheetData', { sheetName: 'Presensi' }).then(data => { if(data) { globalPresensiData = data; renderLaporanTable(); } });
+    }
+
+    function renderLaporanTable() {
+      const tbody = document.getElementById('tbodyLaporan');
+      const fKelas = document.getElementById('lapFilterKelas').value, fTanggal = document.getElementById('lapFilterTanggal').value;
+      tbody.innerHTML = '';
+      for(let i=1; i<globalPresensiData.length; i++) {
+        const r = globalPresensiData[i];
+        if(fKelas && r[3] !== fKelas) continue;
+        if(fTanggal && !r[0].includes(fTanggal)) continue;
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2">${r[0]}</td><td class="p-2 font-mono">${r[1]}</td><td class="p-2 font-semibold">${r[2]}</td><td class="p-2">${r[3]}</td>
+            <td class="p-2"><span class="px-2 py-0.5 rounded text-xs font-bold ${getBadgeColor(r[4])}">${r[4]}</span></td><td class="p-2">${r[5] || '-'}</td><td class="p-2">${r[6] || '-'}</td>
+          </tr>`;
+      }
+    }
+
+    function getBadgeColor(status) {
+      const s = (status || '').toLowerCase();
+      if(s === 'hadir') return 'bg-emerald-100 text-emerald-800'; if(s === 'sakit') return 'bg-amber-100 text-amber-800';
+      if(s === 'izin') return 'bg-blue-100 text-blue-800'; return 'bg-rose-100 text-rose-800';
+    }
+
+    // 10. JADWAL SETTINGS
+    function initJadwalPage() {
+      fetchAPI('getJadwalSettings').then(cfg => {
+        if(cfg) { document.getElementById('cfgJamMasuk').value = cfg.jamMasuk; document.getElementById('cfgJamPulang').value = cfg.jamPulang; document.getElementById('cfgToleransi').value = cfg.toleransi; document.getElementById('cfgHariLibur').value = cfg.hariLibur; }
+      });
+    }
+
+    function saveJadwalForm(e) {
+      e.preventDefault();
+      const obj = { jamMasuk: document.getElementById('cfgJamMasuk').value, jamPulang: document.getElementById('cfgJamPulang').value, toleransi: document.getElementById('cfgToleransi').value, hariLibur: document.getElementById('cfgHariLibur').value };
+      fetchAPI('saveJadwalSettings', { jadwalObj: obj }).then(res => { if(res) alert(res.message); });
+    }
+  </script>
+  
   <!-- ================= LOGIN PAGE ================= -->
   <div id="loginPage" class="flex-1 flex items-center justify-center p-4">
     <div class="glass-effect p-8 rounded-2xl shadow-xl w-full max-w-md text-center border">
@@ -30,19 +497,6 @@
         <p class="text-sm text-slate-500">SMKN 2 Banjar</p>
       </div>
       <form onsubmit="handleLogin(event)" class="space-y-4">
-        <!-- Tambahan Pilihan Role Wajib untuk sinkronisasi Backend -->
-        <div class="text-left">
-          <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Masuk Sebagai</label>
-          <div class="flex gap-4 p-2 bg-slate-50 border rounded-lg">
-            <label class="flex-1 text-center cursor-pointer">
-              <input type="radio" name="role" value="siswa" checked class="mr-1"> Siswa
-            </label>
-            <label class="flex-1 text-center cursor-pointer">
-              <input type="radio" name="role" value="guru" class="mr-1"> Guru / Admin
-            </label>
-          </div>
-        </div>
-
         <div class="text-left">
           <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Username (NIS / NIP)</label>
           <input type="text" id="username" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
@@ -131,18 +585,11 @@
             <h2 class="font-bold text-lg mb-1 flex items-center gap-2"><i class="fa-solid fa-camera text-blue-600"></i> Scanner Otomatis</h2>
             <p class="text-xs text-slate-500 mb-3">Arahkan kamera ke QR Code. Sistem akan **langsung memproses otomatis** tanpa memotret!</p>
 
-            <div class="mb-3">
-              <label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Pilih Sumber Kamera</label>
-              <select id="cameraSelect" onchange="changeCameraDevice(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm bg-white">
-                <option value="">Memuat daftar kamera...</option>
-              </select>
-            </div>
-
             <div id="reader" class="bg-slate-900 rounded-lg overflow-hidden min-h-[260px] mb-3"></div>
 
             <div class="flex flex-wrap gap-2 mb-3">
-              <button onclick="startCameraByMode('environment')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-camera-rotate"></i> Kamera Belakang</button>
-              <button onclick="startCameraByMode('user')" class="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-user"></i> Kamera Depan</button>
+              <button onclick="startCameraScan('environment')" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-camera-rotate"></i> Kamera Belakang</button>
+              <button onclick="startCameraScan('user')" class="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium"><i class="fa-solid fa-user"></i> Kamera Depan</button>
             </div>
 
             <div class="border-t pt-3 mt-3">
@@ -387,27 +834,6 @@
   </div>
 
   <script>
-    // =========================================================================
-    // CONFIG: GOOGLE APPS SCRIPT BACKEND URL
-    // =========================================================================
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbyBlEyLfHmhr0Ib3apalj7GOMIg1jGZpOR_Y7nSgL3uhoxSd_3p2TL5hDzimWi9xYJR/exec";
-
-    // Jembatan Komunikasi pengganti google.script.run yang sudah diperbaiki
-    async function callGAS(action, payload = {}) {
-      try {
-        const response = await fetch(GAS_URL, {
-          redirect: "follow", // Penting untuk GAS Redirect System
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Bypass preflight
-          body: JSON.stringify({ action, ...payload })
-        });
-        return await response.json();
-      } catch (err) {
-        console.error("Kesalahan Server GAS:", err);
-        return { status: 'error', message: "Gagal terhubung ke server Google Apps Script." };
-      }
-    }
-
     // State Global Variable
     let currentUser = {};
     let globalSiswaData = [];
@@ -440,44 +866,37 @@
       }
     }
 
-    // 2. AUTHENTICATION (Sudah Diperbaiki Sesuai Backend Baru)
-    async function handleLogin(e) {
+    // 2. AUTHENTICATION
+    function handleLogin(e) {
       e.preventDefault();
-      
-      const role = document.querySelector('input[name="role"]:checked').value;
       const u = document.getElementById('username').value;
       const p = document.getElementById('password').value;
       const btn = document.getElementById('btnLogin');
       btn.innerText = 'Memeriksa...';
 
-      // Mengubah aksi menjadi 'login' agar cocok dengan Backend:Code.gs
-      const res = await callGAS('login', { role: role, username: u, password: p });
-      
-      // Mengecek menggunakan res.status (bukan res.success)
-      if(res.status === 'success') {
-        currentUser = res.user;
-        currentUser.NIS = currentUser.username; // Kompatibilitas field NIS/Username
+      google.script.run.withSuccessHandler(res => {
+        if(res.success) {
+          currentUser = res;
+          document.getElementById('loginPage').classList.add('hidden');
+          document.getElementById('mainDashboard').classList.remove('hidden');
+          document.getElementById('userNameDisplay').innerText = res.nama;
+          document.getElementById('userRoleBadge').innerText = res.role.toUpperCase();
 
-        document.getElementById('loginPage').classList.add('hidden');
-        document.getElementById('mainDashboard').classList.remove('hidden');
-        document.getElementById('userNameDisplay').innerText = currentUser.nama;
-        document.getElementById('userRoleBadge').innerText = currentUser.role.toUpperCase();
-
-        if(currentUser.role === 'siswa') {
-          document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'none');
-          showSection('studentProfileView');
-          renderStudentProfile();
+          if(res.role === 'siswa') {
+            document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'none');
+            showSection('studentProfileView');
+            renderStudentProfile();
+          } else {
+            document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'flex');
+            showSection('dashboardView');
+            preloadDataAll();
+          }
         } else {
-          document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'flex');
-          showSection('dashboardView');
-          preloadDataAll();
+          document.getElementById('loginMsg').innerText = res.message;
+          document.getElementById('loginMsg').classList.remove('hidden');
+          btn.innerText = 'Masuk';
         }
-      } else {
-        document.getElementById('loginMsg').innerText = res.message || "Gagal Login.";
-        document.getElementById('loginMsg').classList.remove('hidden');
-      }
-      
-      btn.innerText = 'Masuk';
+      }).prosesLogin(u, p);
     }
 
     function logout() {
@@ -485,31 +904,26 @@
       stopScanner();
       document.getElementById('mainDashboard').classList.add('hidden');
       document.getElementById('loginPage').classList.remove('hidden');
-      document.getElementById('loginForm').reset();
     }
 
-    // 3. PRELOAD & DATA REFRESH (Menggunakan getTableData Sesuai Backend)
-    async function preloadDataAll() {
-      // Mengubah pemanggilan 'getSheetData' menjadi 'getTableData'
-      const siswaData = await callGAS('getTableData', { sheetName: 'Siswa' });
-      if (Array.isArray(siswaData)) {
-        globalSiswaData = siswaData;
+    // 3. PRELOAD & DATA REFRESH
+    function preloadDataAll() {
+      google.script.run.withSuccessHandler(data => {
+        globalSiswaData = data;
         populateKelasDropdowns();
         renderSiswaTable();
-      }
+      }).getSheetData('Siswa');
 
-      const guruData = await callGAS('getTableData', { sheetName: 'Guru' });
-      if (Array.isArray(guruData)) {
-        globalGuruData = guruData;
+      google.script.run.withSuccessHandler(data => {
+        globalGuruData = data;
         renderGuruTable();
-      }
+      }).getSheetData('Guru');
 
-      const presensiData = await callGAS('getTableData', { sheetName: 'Presensi' });
-      if (Array.isArray(presensiData)) {
-        globalPresensiData = presensiData;
+      google.script.run.withSuccessHandler(data => {
+        globalPresensiData = data;
         updateStatistikUI();
         renderLaporanTable();
-      }
+      }).getSheetData('Presensi');
     }
 
     function populateKelasDropdowns() {
@@ -578,86 +992,41 @@
       });
     }
 
-    // 5. SCANNER KAMERA OTOMATIS + PILIHAN KAMERA DEPAN / BELAKANG
-    async function initScanner() {
-      await loadAvailableCameras();
+    // 5. SCANNER KAMERA OTOMATIS (AUTO-SENSING INPUT TANPA MEMOTRET)
+    function initScanner() {
+      startCameraScan('environment');
     }
 
-    async function loadAvailableCameras() {
-      const cameraSelect = document.getElementById('cameraSelect');
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        if (devices && devices.length > 0) {
-          cameraSelect.innerHTML = "";
-          devices.forEach((dev, index) => {
-            const opt = document.createElement('option');
-            opt.value = dev.id;
-            let label = dev.label || `Kamera ${index + 1}`;
-            if (label.toLowerCase().includes('back') || label.toLowerCase().includes('rear')) {
-              label = `Kamera Belakang (${label})`;
-            } else if (label.toLowerCase().includes('front')) {
-              label = `Kamera Depan (${label})`;
-            }
-            opt.text = label;
-            cameraSelect.appendChild(opt);
-          });
+    function startCameraScan(facingMode) {
+      stopScanner().then(() => {
+        html5QrcodeScanner = new Html5Qrcode("reader");
+        const config = { fps: 15, qrbox: { width: 220, height: 220 } };
 
-          // Pilih Kamera Belakang secara Default jika ada
-          let defaultCamId = devices[0].id;
-          const backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear'));
-          if (backCam) defaultCamId = backCam.id;
-
-          cameraSelect.value = defaultCamId;
-          startCameraById(defaultCamId);
-        } else {
-          startCameraByMode('environment');
-        }
-      } catch (err) {
-        startCameraByMode('environment');
-      }
-    }
-
-    function changeCameraDevice(cameraId) {
-      if (cameraId) {
-        startCameraById(cameraId);
-      }
-    }
-
-    async function startCameraById(cameraId) {
-      await stopScanner();
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      const config = { fps: 15, qrbox: { width: 220, height: 220 } };
-
-      html5QrcodeScanner.start(
-        cameraId,
-        config,
-        onQrScanSuccess,
-        () => {}
-      ).catch(err => {
-        console.error("Gagal membuka kamera terpilih:", err);
+        html5QrcodeScanner.start(
+          { facingMode: facingMode },
+          config,
+          (decodedText) => {
+            if (isScanCooldown) return;
+            isScanCooldown = true;
+            processQRScan(decodedText);
+            setTimeout(() => { isScanCooldown = false; }, 2500); // Cooldown 2.5 detik untuk siswa berikutnya
+          },
+          (errorMessage) => { /* ignore frame parse errors */ }
+        ).catch(err => {
+          // Fallback camera
+          html5QrcodeScanner.start(
+            { facingMode: 'user' },
+            config,
+            (decodedText) => {
+              if (isScanCooldown) return;
+              isScanCooldown = true;
+              processQRScan(decodedText);
+              setTimeout(() => { isScanCooldown = false; }, 2500);
+            },
+            (err) => {}
+          ).catch(e => alert("Kamera tidak dapat diakses! Pastikan izin kamera di browser telah diberikan. Error: " + e));
+        });
       });
-    }
-
-    async function startCameraByMode(facingMode) {
-      await stopScanner();
-      html5QrcodeScanner = new Html5Qrcode("reader");
-      const config = { fps: 15, qrbox: { width: 220, height: 220 } };
-
-      html5QrcodeScanner.start(
-        { facingMode: facingMode },
-        config,
-        onQrScanSuccess,
-        () => {}
-      ).catch(err => {
-        alert("Kamera tidak dapat diakses! Pastikan izin kamera telah diberikan.");
-      });
-    }
-
-    function onQrScanSuccess(decodedText) {
-      if (isScanCooldown) return;
-      isScanCooldown = true;
-      processQRScan(decodedText);
-      setTimeout(() => { isScanCooldown = false; }, 2500); // Cooldown 2.5 detik
     }
 
     function stopScanner() {
@@ -684,7 +1053,7 @@
         .catch(err => alert("Gagal membaca QR Code dari file gambar."));
     }
 
-    async function processQRScan(nis) {
+    function processQRScan(nis) {
       let student = null;
       for(let i=1; i<globalSiswaData.length; i++) {
         if(String(globalSiswaData[i][0]).trim() === String(nis).trim()) {
@@ -698,11 +1067,10 @@
       }
 
       const list = [{ nis: student.nis, nama: student.nama, kelas: student.kelas, status: 'Hadir', metode: 'QR Code Scanner' }];
-      
-      // Mengubah panggilan 'savePresensiBatch' menjadi 'savePresensi' sesuai kode backend
-      const res = await callGAS('savePresensi', { presensiList: list });
-      alert((res.message || res.status) + " (" + student.nama + ")");
-      preloadDataAll();
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message + " (" + student.nama + ")");
+        preloadDataAll();
+      }).savePresensiBatch(list);
     }
 
     function filterSiswaByKelasScan() {
@@ -716,7 +1084,7 @@
       }
     }
 
-    async function submitPresensiSingle(e) {
+    function submitPresensiSingle(e) {
       e.preventDefault();
       const idx = document.getElementById('scanSelectSiswa').value;
       if(!idx) return alert("Pilih siswa!");
@@ -725,13 +1093,14 @@
       const ket = document.getElementById('scanKeterangan').value;
 
       const list = [{ nis: row[0], nama: row[1], kelas: row[2], status: status, metode: 'Manual Form', keterangan: ket }];
-      const res = await callGAS('savePresensi', { presensiList: list });
-      alert(res.message || res.status);
-      document.getElementById('scanKeterangan').value = '';
-      preloadDataAll();
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+        document.getElementById('scanKeterangan').value = '';
+        preloadDataAll();
+      }).savePresensiBatch(list);
     }
 
-    async function absenSemuaHadir() {
+    function absenSemuaHadir() {
       const k = document.getElementById('massKelasSelect').value;
       if(!k) return alert("Pilih kelas terlebih dahulu!");
       const list = [];
@@ -742,9 +1111,10 @@
       }
       if(list.length === 0) return alert("Siswa tidak ditemukan di kelas ini.");
       if(confirm(`Yakin ingin menyetel HADIR untuk ${list.length} siswa kelas ${k}?`)) {
-        const res = await callGAS('savePresensi', { presensiList: list });
-        alert(res.message || res.status);
-        preloadDataAll();
+        google.script.run.withSuccessHandler(res => {
+          alert(res.message);
+          preloadDataAll();
+        }).savePresensiBatch(list);
       }
     }
 
@@ -785,7 +1155,7 @@
       if(count === 0) tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center text-slate-500">Siswa tidak ditemukan</td></tr>';
     }
 
-    async function simpanBatchPresensiManual() {
+    function simpanBatchPresensiManual() {
       const tgl = document.getElementById('batchFormTanggal').value;
       if(!tgl) return alert("Pilih tanggal presensi!");
 
@@ -804,18 +1174,19 @@
       });
 
       if(list.length === 0) return alert("Pilih kelas dan pastikan ada siswa!");
-      const res = await callGAS('savePresensi', { presensiList: list });
-      alert(res.message || res.status);
-      preloadDataAll();
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+        preloadDataAll();
+      }).savePresensiBatch(list);
     }
 
     // 7. PROFILE SISWA & EDIT MANDIRI + GENERATE QR CODE
     function renderStudentProfile() {
       document.getElementById('profileName').innerText = currentUser.nama;
-      document.getElementById('profileNIS').innerText = currentUser.NIS || currentUser.username;
+      document.getElementById('profileNIS').innerText = currentUser.NIS;
       document.getElementById('profileKelas').innerText = currentUser.kelas;
 
-      // Populate Input Edit Form (Opsional jika server support load data lengkap)
+      // Populate Input Edit Form
       document.getElementById('selfTglLahir').value = currentUser.tglLahir || '';
       document.getElementById('selfNoHp').value = currentUser.noHp || '';
       document.getElementById('selfEskul').value = currentUser.eskul || '';
@@ -828,13 +1199,13 @@
       const qrContainer = document.getElementById("qrcodeContainer");
       qrContainer.innerHTML = "";
       new QRCode(qrContainer, {
-        text: String(currentUser.NIS || currentUser.username),
+        text: String(currentUser.NIS),
         width: 150,
         height: 150
       });
     }
 
-    async function saveSelfProfile(e) {
+    function saveSelfProfile(e) {
       e.preventDefault();
       const pData = {
         tglLahir: document.getElementById('selfTglLahir').value,
@@ -846,18 +1217,25 @@
         password: document.getElementById('selfPassword').value
       };
 
-      const res = await callGAS('updateStudentSelfProfile', { nis: currentUser.NIS, pData });
-      alert(res.message || 'Perintah simpan dikirim. (Fitur ini perlu didukung oleh backend.gs)');
+      google.script.run.withSuccessHandler(res => {
+        alert(res.message);
+        if(pData.password) currentUser.password = pData.password;
+        currentUser.tglLahir = pData.tglLahir;
+        currentUser.noHp = pData.noHp;
+        currentUser.eskul = pData.eskul;
+        currentUser.orangTua = pData.orangTua;
+        currentUser.alamat = pData.alamat;
+        currentUser.keterangan = pData.keterangan;
+      }).updateStudentSelfProfile(currentUser.NIS, pData);
     }
 
     // 8. DATA SISWA & GURU (ADMIN ROLE)
-    async function loadDataSiswa() {
-      const data = await callGAS('getTableData', { sheetName: 'Siswa' });
-      if (Array.isArray(data)) {
+    function loadDataSiswa() {
+      google.script.run.withSuccessHandler(data => {
         globalSiswaData = data;
         populateKelasDropdowns();
         renderSiswaTable();
-      }
+      }).getSheetData('Siswa');
     }
 
     function renderSiswaTable() {
@@ -877,21 +1255,48 @@
             <td class="p-2 font-mono">${nis}</td>
             <td class="p-2 font-semibold">${nama}</td>
             <td class="p-2">${kelas}</td>
-            <td class="p-2 text-center">
-              <button onclick="editDataRow('Siswa', ${i})" class="text-blue-600 hover:text-blue-800 mx-1"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteDataRow('Siswa', ${i})" class="text-red-600 hover:text-red-800 mx-1"><i class="fa-solid fa-trash"></i></button>
+            <td class="p-2 text-center flex justify-center gap-2">
+              <button onclick="openModalSiswa(${i})" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="hapusRow('Siswa', ${i})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
       }
     }
 
-    async function loadDataGuru() {
-      const data = await callGAS('getTableData', { sheetName: 'Guru' });
-      if (Array.isArray(data)) {
+    function openModalSiswa(dataIndex = null) {
+      const isEdit = dataIndex !== null;
+      const cur = isEdit ? globalSiswaData[dataIndex] : ['', '', '', '123456', '', '', '', '', '', ''];
+      document.getElementById('modalTitle').innerText = isEdit ? 'Edit Data Siswa' : 'Tambah Data Siswa';
+      document.getElementById('modalBody').innerHTML = `
+        <div><label class="block text-xs font-semibold text-slate-600">NIS</label><input type="text" id="mNis" value="${cur[0]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Nama</label><input type="text" id="mNama" value="${cur[1]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Kelas</label><input type="text" id="mKelas" value="${cur[2]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Password</label><input type="password" id="mPass" value="${cur[3] || '123456'}" class="w-full border p-2 rounded text-sm"></div>
+      `;
+      document.getElementById('modalSaveBtn').onclick = () => {
+        const row = [
+          document.getElementById('mNis').value,
+          document.getElementById('mNama').value,
+          document.getElementById('mKelas').value,
+          document.getElementById('mPass').value,
+          cur[4]||'', cur[5]||'', cur[6]||'', cur[7]||'', cur[8]||'', cur[9]||''
+        ];
+        if(isEdit) {
+          google.script.run.withSuccessHandler(res => { alert(res.message); closeModal(); loadDataSiswa(); }).updateDataRow('Siswa', dataIndex, row);
+        } else {
+          google.script.run.withSuccessHandler(res => { alert(res.message); closeModal(); loadDataSiswa(); }).addDataRow('Siswa', row);
+        }
+      };
+      document.getElementById('modalForm').classList.remove('hidden');
+      document.getElementById('modalForm').classList.add('flex');
+    }
+
+    function loadDataGuru() {
+      google.script.run.withSuccessHandler(data => {
         globalGuruData = data;
         renderGuruTable();
-      }
+      }).getSheetData('Guru');
     }
 
     function renderGuruTable() {
@@ -902,80 +1307,56 @@
           <tr class="border-b hover:bg-slate-50">
             <td class="p-2 font-mono">${globalGuruData[i][0]}</td>
             <td class="p-2 font-semibold">${globalGuruData[i][1]}</td>
-            <td class="p-2">${globalGuruData[i][2] || 'Guru'}</td>
-            <td class="p-2 text-center">
-              <button onclick="editDataRow('Guru', ${i})" class="text-blue-600 hover:text-blue-800 mx-1"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteDataRow('Guru', ${i})" class="text-red-600 hover:text-red-800 mx-1"><i class="fa-solid fa-trash"></i></button>
+            <td class="p-2">${globalGuruData[i][3] || 'guru'}</td>
+            <td class="p-2 text-center flex justify-center gap-2">
+              <button onclick="openModalGuru(${i})" class="text-blue-600 hover:text-blue-800"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="hapusRow('Guru', ${i})" class="text-red-500 hover:text-red-700"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
       }
     }
 
-    function openModalSiswa() { alert("Fitur form tambah siswa dalam pengembangan!"); }
-    function openModalGuru() { alert("Fitur form tambah guru dalam pengembangan!"); }
-    function editDataRow(sheet, index) { alert("Fitur edit row dalam pengembangan! (Perlu modifikasi Backend)"); }
-    function deleteDataRow(sheet, index) { alert("Fitur hapus row dalam pengembangan! (Perlu modifikasi Backend)"); }
+    function openModalGuru(dataIndex = null) {
+      const isEdit = dataIndex !== null;
+      const cur = isEdit ? globalGuruData[dataIndex] : ['', '', '123456', 'guru'];
+      document.getElementById('modalTitle').innerText = isEdit ? 'Edit Data Guru' : 'Tambah Data Guru';
+      document.getElementById('modalBody').innerHTML = `
+        <div><label class="block text-xs font-semibold text-slate-600">NIP/Username</label><input type="text" id="mNip" value="${cur[0]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Nama Guru</label><input type="text" id="mNamaG" value="${cur[1]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Password</label><input type="password" id="mPassG" value="${cur[2]}" class="w-full border p-2 rounded text-sm"></div>
+        <div><label class="block text-xs font-semibold text-slate-600">Role</label>
+          <select id="mRoleG" class="w-full border p-2 rounded text-sm">
+            <option value="guru" ${cur[3]==='guru'?'selected':''}>Guru</option>
+            <option value="admin" ${cur[3]==='admin'?'selected':''}>Admin</option>
+          </select>
+        </div>
+      `;
+      document.getElementById('modalSaveBtn').onclick = () => {
+        const row = [
+          document.getElementById('mNip').value,
+          document.getElementById('mNamaG').value,
+          document.getElementById('mPassG').value,
+          document.getElementById('mRoleG').value
+        ];
+        if(isEdit) {
+          google.script.run.withSuccessHandler(res => { alert(res.message); closeModal(); loadDataGuru(); }).updateDataRow('Guru', dataIndex, row);
+        } else {
+          google.script.run.withSuccessHandler(res => { alert(res.message); closeModal(); loadDataGuru(); }).addDataRow('Guru', row);
+        }
+      };
+      document.getElementById('modalForm').classList.remove('hidden');
+      document.getElementById('modalForm').classList.add('flex');
+    }
 
-    // 9. LAPORAN & EXPORT
-    async function loadLaporanData() {
-      const data = await callGAS('getTableData', { sheetName: 'Presensi' });
-      if (Array.isArray(data)) {
-        globalPresensiData = data;
-        renderLaporanTable();
+    function hapusRow(sheetName, index) {
+      if(confirm(`Yakin hapus data dari sheet ${sheetName}?`)) {
+        google.script.run.withSuccessHandler(res => {
+          alert(res.message);
+          if(sheetName === 'Siswa') loadDataSiswa();
+          if(sheetName === 'Guru') loadDataGuru();
+        }).deleteDataRow(sheetName, index);
       }
-    }
-
-    function renderLaporanTable() {
-      const tbody = document.getElementById('tbodyLaporan');
-      const kFilter = document.getElementById('lapFilterKelas').value;
-      const tFilter = document.getElementById('lapFilterTanggal').value; // Format: YYYY-MM-DD
-      tbody.innerHTML = '';
-
-      // Tampilkan 100 data terbaru dari bawah
-      let count = 0;
-      for(let i = globalPresensiData.length - 1; i > 0; i--) {
-        const row = globalPresensiData[i];
-        const tgl = row[0] || '';
-        const nis = row[1] || '';
-        const nama = row[2] || '';
-        const kelas = row[3] || '';
-        const status = row[4] || '';
-        const metode = row[5] || '';
-        const ket = row[6] || ''; // Keterangan
-
-        if(kFilter && kelas !== kFilter) continue;
-        if(tFilter && !tgl.includes(tFilter)) continue;
-
-        let statusClass = 'text-slate-600';
-        if(status.toLowerCase() === 'hadir') statusClass = 'text-emerald-600 font-bold';
-        else if(status.toLowerCase() === 'sakit') statusClass = 'text-amber-600 font-bold';
-        else if(status.toLowerCase() === 'izin') statusClass = 'text-blue-600 font-bold';
-        else if(status.toLowerCase() === 'alfa') statusClass = 'text-rose-600 font-bold';
-
-        tbody.innerHTML += `
-          <tr class="border-b hover:bg-slate-50 text-xs">
-            <td class="p-2">${tgl.substring(0, 16).replace('T', ' ')}</td>
-            <td class="p-2 font-mono">${nis}</td>
-            <td class="p-2 font-semibold">${nama}</td>
-            <td class="p-2">${kelas}</td>
-            <td class="p-2 ${statusClass}">${status}</td>
-            <td class="p-2 text-slate-500">${metode}</td>
-            <td class="p-2 text-slate-500">${ket}</td>
-          </tr>
-        `;
-        count++;
-        if(count >= 100 && !kFilter && !tFilter) break; 
-      }
-    }
-
-    function initJadwalPage() {
-      alert("Memuat data pengaturan jadwal...");
-      // Logic request ke server untuk mengambil setting jadwal.
-    }
-    function saveJadwalForm(e) {
-      e.preventDefault();
-      alert("Penyimpanan jadwal dikirim (perlu update backend).");
     }
 
     function closeModal() {
@@ -983,6 +1364,67 @@
       document.getElementById('modalForm').classList.remove('flex');
     }
 
+    // 9. LAPORAN TABLE
+    function loadLaporanData() {
+      google.script.run.withSuccessHandler(data => {
+        globalPresensiData = data;
+        renderLaporanTable();
+      }).getSheetData('Presensi');
+    }
+
+    function renderLaporanTable() {
+      const tbody = document.getElementById('tbodyLaporan');
+      const fKelas = document.getElementById('lapFilterKelas').value;
+      const fTanggal = document.getElementById('lapFilterTanggal').value;
+      tbody.innerHTML = '';
+
+      for(let i=1; i<globalPresensiData.length; i++) {
+        const r = globalPresensiData[i];
+        if(fKelas && r[3] !== fKelas) continue;
+        if(fTanggal && !r[0].includes(fTanggal)) continue;
+
+        tbody.innerHTML += `
+          <tr class="border-b">
+            <td class="p-2">${r[0]}</td>
+            <td class="p-2 font-mono">${r[1]}</td>
+            <td class="p-2 font-semibold">${r[2]}</td>
+            <td class="p-2">${r[3]}</td>
+            <td class="p-2"><span class="px-2 py-0.5 rounded text-xs font-bold ${getBadgeColor(r[4])}">${r[4]}</span></td>
+            <td class="p-2">${r[5] || '-'}</td>
+            <td class="p-2">${r[6] || '-'}</td>
+          </tr>
+        `;
+      }
+    }
+
+    function getBadgeColor(status) {
+      const s = (status || '').toLowerCase();
+      if(s === 'hadir') return 'bg-emerald-100 text-emerald-800';
+      if(s === 'sakit') return 'bg-amber-100 text-amber-800';
+      if(s === 'izin') return 'bg-blue-100 text-blue-800';
+      return 'bg-rose-100 text-rose-800';
+    }
+
+    // 10. JADWAL SETTINGS
+    function initJadwalPage() {
+      google.script.run.withSuccessHandler(cfg => {
+        document.getElementById('cfgJamMasuk').value = cfg.jamMasuk;
+        document.getElementById('cfgJamPulang').value = cfg.jamPulang;
+        document.getElementById('cfgToleransi').value = cfg.toleransi;
+        document.getElementById('cfgHariLibur').value = cfg.hariLibur;
+      }).getJadwalSettings();
+    }
+
+    function saveJadwalForm(e) {
+      e.preventDefault();
+      const obj = {
+        jamMasuk: document.getElementById('cfgJamMasuk').value,
+        jamPulang: document.getElementById('cfgJamPulang').value,
+        toleransi: document.getElementById('cfgToleransi').value,
+        hariLibur: document.getElementById('cfgHariLibur').value
+      };
+      google.script.run.withSuccessHandler(res => alert(res.message)).saveJadwalSettings(obj);
+    }
   </script>
 </body>
 </html>
