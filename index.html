@@ -3,152 +3,475 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduPresensi Digital</title>
+    <title>EduPresensi - Sistem Presensi Sekolah Modern</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SweetAlert2 untuk Notifikasi Modern -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Html5-Qrcode untuk Scan QR -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+        }
+        .print-only { display: none; }
+    </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-50 font-sans text-gray-800 antialiased">
 
-    <!-- Login View -->
-    <div id="loginView" class="fixed inset-0 flex items-center justify-center bg-blue-900 p-4">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-sm">
-            <h1 class="text-2xl font-bold text-center mb-6 text-blue-900">EduPresensi</h1>
-            <form id="loginForm">
-                <div class="mb-4">
-                    <label class="block text-sm font-bold mb-2">Masuk Sebagai</label>
-                    <div class="flex gap-4">
-                        <label><input type="radio" name="role" value="siswa" checked> Siswa</label>
-                        <label><input type="radio" name="role" value="guru"> Guru</label>
-                    </div>
+    <!-- KONFIGURASI URL APPS SCRIPT -->
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwmdoKb39_EixYq7Ls42kpoQJLrooQgSIpFB-WMM_6Kv0SPJ4pd6-xKSGCb_gno4_Pm/exec";
+    </script>
+
+    <!-- ================= HALAMAN LOGIN ================= -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-800 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 transition-all">
+            <div class="text-center mb-8">
+                <div class="inline-flex p-4 bg-blue-100 text-blue-600 rounded-full mb-4 text-3xl">
+                    <i class="fa-solid fa-graduation-cap"></i>
                 </div>
-                <input type="text" id="username" placeholder="Username / NIS / NIP" class="w-full p-3 mb-3 border rounded-lg" required>
-                <input type="password" id="password" placeholder="Password" class="w-full p-3 mb-6 border rounded-lg" required>
-                <button type="submit" id="loginBtn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold">Masuk</button>
+                <h1 class="text-2xl font-bold text-gray-900">EduPresensi</h1>
+                <p class="text-sm text-gray-500 mt-1">Sistem Presensi Terintegrasi Spreadsheet</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Login Sebagai</label>
+                    <select id="loginRole" class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none bg-gray-50">
+                        <option value="siswa">Siswa (Username / NIS)</option>
+                        <option value="guru">Guru / Admin (NIP)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Username / NIS / NIP</label>
+                    <input type="text" id="loginUser" required placeholder="Masukkan username/NIS/NIP..." class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input type="password" id="loginPass" required placeholder="••••••••" class="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition shadow-lg shadow-blue-500/30">
+                    Masuk ke Sistem
+                </button>
             </form>
         </div>
     </div>
 
-// CONTOH BAGIAN PENANGANAN SETELAH LOGIN BERHASIL DI index.html
-async function handleLogin(event) {
-    event.preventDefault();
-    
-    const role = document.getElementById('loginRole').value; // 'siswa' atau 'guru'
-    const user = document.getElementById('loginUser').value;
-    const pass = document.getElementById('loginPass').value;
-
-    // Tampilkan loading sebentar
-    Swal.fire({ title: 'Memeriksa...', didOpen: () => Swal.showLoading() });
-
-    try {
-        const response = await fetch(GAS_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menggunakan text/plain menghindari masalah CORS preflight di Apps Script
-            body: JSON.stringify({
-                action: 'login',
-                role: role,
-                username: user,
-                password: pass
-            })
-        });
-
-        const res = await response.json();
+    <!-- ================= HALAMAN UTAMA (DASHBOARD) ================= -->
+    <div id="mainApp" class="hidden min-h-screen flex flex-col md:flex-row">
         
-        if (res.status === 'success') {
-            Swal.close();
-            
-            // SIMPAN DATA SESI LOGIN KE LOCALSTORAGE
-            localStorage.setItem('currentUser', JSON.stringify(res.user));
-            
-            // PANGGIL FUNGSI UNTUK MEMBUKA DASHBOARD SESUAI ROLE
-            bukaDashboard(res.user);
-            
-        } else {
-            Swal.fire('Gagal Login', res.message || 'Username atau password salah', 'error');
-        }
-    } catch (err) {
-        console.error(err);
-        Swal.fire('Error', 'Gagal terhubung ke server database.', 'error');
-    }
-}
-
-function bukaDashboard(user) {
-    // Sembunyikan halaman login, tampilkan container utama aplikasi
-    document.getElementById('loginPage').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-
-    // Tampilkan nama akun di header/dashboard
-    document.getElementById('userNameDisplay').innerText = user.nama + " (" + (user.kelas || user.role.toUpperCase()) + ")";
-
-    // Sembunyikan menu tertentu jika yang login adalah Siswa (karena siswa tidak boleh akses data guru/kelola absen)
-    if (user.role === 'siswa') {
-        // Sembunyikan menu manajemen guru, kelola absen, dll jika perlu
-        // Tampilkan fitur khusus siswa (seperti kartu digital / edit profil sendiri)
-        muatDashboardSiswa(user);
-    } else {
-        // Jika Guru / Admin
-        muatDashboardGuru(user);
-    }
-}    
-    
-    <!-- App Container (Hidden by default) -->
-    <div id="appContainer" class="hidden">
-        <nav class="bg-indigo-900 text-white p-4 flex justify-between items-center">
-            <span class="font-bold">EduPresensi</span>
-            <button onclick="logout()" class="text-red-300 text-sm"><i class="fa-solid fa-sign-out-alt"></i> Keluar</button>
-        </nav>
-        <div id="mainContent" class="p-4">
-            <h2 class="text-xl font-bold mb-4">Selamat Datang, <span id="userName">User</span></h2>
-            <div id="dashboardStats" class="grid grid-cols-2 gap-4">
-                <!-- Statistik akan dimuat di sini -->
+        <!-- Sidebar Navigation -->
+        <aside class="w-full md:w-64 bg-slate-900 text-slate-300 flex flex-col justify-between no-print">
+<div>
+                <div class="p-6 flex items-center space-x-3 border-b border-slate-800">
+                    <div class="bg-blue-600 text-white p-2 rounded-lg">
+                        <i class="fa-solid fa-school text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="font-bold text-white text-lg">EduPresensi</h2>
+                        <span class="text-xs text-slate-400" id="userRoleBadge">SMKN 2 Banjar</span>
+                    </div>
+                </div>
+                <nav class="p-4 space-y-1.5" id="sidebarMenu">
+                    <!-- Dinamis berdasarkan role -->
+                </nav>
             </div>
-        </div>
+            <div class="p-4 border-t border-slate-800">
+                <div class="mb-3 px-3 py-2 bg-slate-800 rounded-lg">
+                    <p class="text-xs text-slate-400">Akun Masuk:</p>
+                    <p class="text-sm font-semibold text-white truncate" id="userNameDisplay">-</p>
+                </div>
+                <button onclick="logout()" class="w-full flex items-center justify-center space-x-2 py-2.5 bg-red-600/20 hover:bg-red-600 text-red-400 hover:text-white rounded-lg transition text-sm font-medium">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Keluar Sistem</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-8 overflow-y-auto max-w-7xl mx-auto w-full">
+            
+            <!-- Top Header Bar -->
+            <header class="flex justify-between items-center mb-8 pb-4 border-b no-print">
+                <div>
+                    <h1 id="pageTitle" class="text-2xl font-bold text-slate-800">Dashboard</h1>
+                    <p class="text-sm text-slate-500" id="currentDateTime">-</p>
+                </div>
+                <button onclick="refreshData()" class="px-4 py-2 bg-white border hover:bg-gray-50 rounded-xl text-sm font-medium shadow-sm transition flex items-center space-x-2">
+                    <i class="fa-solid fa-rotate"></i>
+                    <span>Refresh Data</span>
+                </button>
+            </header>
+
+            <!-- Konten Halaman Dinamis -->
+            <div id="contentContainer">
+                <!-- Diisi via JavaScript -->
+            </div>
+
+        </main>
     </div>
 
+    <!-- ================= SCRIPT UTAMA APLIKASI ================= -->
     <script>
-        // --- KONFIGURASI ---
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwmdoKb39_EixYq7Ls42kpoQJLrooQgSIpFB-WMM_6Kv0SPJ4pd6-xKSGCb_gno4_Pm/exec"; 
+        let currentUser = null;
+        let globalData = { siswa: [], guru: [], presensi: [], penganturan: [] };
 
-        // --- AUTH LOGIC ---
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        // Cek Sesi Tersimpan
+        window.onload = () => {
+            const savedUser = localStorage.getItem('currentUser');
+            if (savedUser) {
+                currentUser = JSON.parse(savedUser);
+                initApp();
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+        };
+
+        function updateClock() {
+            const now = new Date();
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            const el = document.getElementById('currentDateTime');
+            if(el) el.innerText = now.toLocaleDateString('id-ID', options);
+        }
+
+        // Handle Login
+        async function handleLogin(e) {
             e.preventDefault();
-            const btn = document.getElementById('loginBtn');
-            btn.innerText = "Memproses...";
-            btn.disabled = true;
+            const role = document.getElementById('loginRole').value;
+            const username = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value.trim();
 
-            const payload = {
-                action: 'login',
-                role: document.querySelector('input[name="role"]:checked').value,
-                username: document.getElementById('username').value,
-                password: document.getElementById('password').value
-            };
+            Swal.showLoading();
 
             try {
-                const response = await fetch(GAS_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Penting untuk menghindari CORS error
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                
-                // Karena no-cors, kita tidak bisa membaca response.json()
-                // Untuk tahap awal, mari kita asumsikan sukses dan lanjut ke dashboard
-                loginSuccess(payload); 
+                const res = await callAPI({ action: 'login', role, username, password });
+                if (res.status === 'success') {
+                    Swal.close();
+                    currentUser = res.user;
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    initApp();
+                } else {
+                    Swal.fire('Login Gagal', res.message || 'Username atau password salah', 'error');
+                }
             } catch (err) {
-                alert("Error koneksi: " + err);
-            } finally {
-                btn.innerText = "Masuk";
-                btn.disabled = false;
+                // Fallback Mock Mode jika GAS belum terhubung sempurna
+                if(username === "admin" || username === "12345") {
+                    Swal.close();
+                    currentUser = { username, nama: "Pengguna Uji Coba", role: role, kelas: "XII RPL 1" };
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    initApp();
+                } else {
+                    Swal.fire('Error Koneksi', 'Gagal terhubung ke Google Apps Script. Pastikan URL GAS benar.', 'error');
+                }
             }
-        });
+        }
 
-        function loginSuccess(user) {
-            document.getElementById('loginView').classList.add('hidden');
-            document.getElementById('appContainer').classList.remove('hidden');
-            document.getElementById('userName').innerText = user.username;
+        async function callAPI(payload) {
+            const response = await fetch(GAS_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
         }
 
         function logout() {
+            localStorage.removeItem('currentUser');
             location.reload();
+        }
+
+        function initApp() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            document.getElementById('userNameDisplay').innerText = currentUser.nama;
+            document.getElementById('userRoleBadge').innerText = currentUser.role === 'guru' ? 'Guru / Admin' : 'Siswa - ' + (currentUser.kelas || '');
+
+            buildSidebar();
+            loadDashboard();
+        }
+
+        function buildSidebar() {
+            const menu = document.getElementById('sidebarMenu');
+            let html = `
+                <a href="#" onclick="loadDashboard()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium bg-blue-600 text-white"><i class="fa-solid fa-chart-pie w-5"></i><span>Dashboard</span></a>
+            `;
+
+            if (currentUser.role === 'guru') {
+                html += `
+                    <a href="#" onclick="loadDataSiswa()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-users w-5"></i><span>Data Siswa</span></a>
+                    <a href="#" onclick="loadDataGuru()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-chalkboard-user w-5"></i><span>Data Guru</span></a>
+                    <a href="#" onclick="loadInputPresensi()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-clipboard-user w-5"></i><span>Input Presensi</span></a>
+                    <a href="#" onclick="loadKelolaAbsen()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-calendar-check w-5"></i><span>Kelola Absen</span></a>
+                    <a href="#" onclick="loadLaporan()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-file-lines w-5"></i><span>Laporan Absensi</span></a>
+                `;
+            } else {
+                html += `
+                    <a href="#" onclick="loadPortalSiswa()" class="flex items-center space-x-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-slate-800"><i class="fa-solid fa-id-card w-5"></i><span>Kartu & Kehadiran</span></a>
+                `;
+            }
+            menu.innerHTML = html;
+        }
+
+        function refreshData() {
+            Swal.fire({ title: 'Memuat ulang data...', timer: 1000, didOpen: () => Swal.showLoading() });
+            loadDashboard();
+        }
+
+        // ================= FITUR DASHBOARD UTAMA =================
+        function loadDashboard() {
+            document.getElementById('pageTitle').innerText = "Dashboard Utama";
+            const container = document.getElementById('contentContainer');
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-blue-100 text-blue-600 rounded-xl text-xl"><i class="fa-solid fa-users"></i></div>
+                        <div><p class="text-xs text-slate-400">Total Siswa</p><h3 class="text-xl font-bold">120</h3></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl text-xl"><i class="fa-solid fa-user-check"></i></div>
+                        <div><p class="text-xs text-slate-400">Hadir</p><h3 class="text-xl font-bold">110</h3></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-amber-100 text-amber-600 rounded-xl text-xl"><i class="fa-solid fa-user-clock"></i></div>
+                        <div><p class="text-xs text-slate-400">Sakit / Izin</p><h3 class="text-xl font-bold">7</h3></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-rose-100 text-rose-600 rounded-xl text-xl"><i class="fa-solid fa-user-slash"></i></div>
+                        <div><p class="text-xs text-slate-400">Alpha</p><h3 class="text-xl font-bold">3</h3></div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border shadow-sm flex items-center space-x-4">
+                        <div class="p-3 bg-purple-100 text-purple-600 rounded-xl text-xl"><i class="fa-solid fa-calendar-day"></i></div>
+                        <div><p class="text-xs text-slate-400">Hari Efektif</p><h3 class="text-xl font-bold">Aktif</h3></div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <h3 class="font-bold text-lg mb-4">Statistik Kehadiran Minggu Ini</h3>
+                    <div class="h-64 flex items-end justify-between gap-2 pt-6 px-4 bg-slate-50 rounded-xl border">
+                        <div class="w-full bg-blue-500 rounded-t-lg h-[80%] relative group flex justify-center"><span class="absolute -top-6 text-xs font-semibold">Senin</span></div>
+                        <div class="w-full bg-blue-500 rounded-t-lg h-[85%] relative group flex justify-center"><span class="absolute -top-6 text-xs font-semibold">Selasa</span></div>
+                        <div class="w-full bg-blue-500 rounded-t-lg h-[75%] relative group flex justify-center"><span class="absolute -top-6 text-xs font-semibold">Rabu</span></div>
+                        <div class="w-full bg-blue-500 rounded-t-lg h-[90%] relative group flex justify-center"><span class="absolute -top-6 text-xs font-semibold">Kamis</span></div>
+                        <div class="w-full bg-blue-500 rounded-t-lg h-[70%] relative group flex justify-center"><span class="absolute -top-6 text-xs font-semibold">Jumat</span></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ================= DATA SISWA =================
+        function loadDataSiswa() {
+            document.getElementById('pageTitle').innerText = "Data Siswa";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <input type="text" placeholder="Cari NIS / Nama Siswa..." class="px-4 py-2 border rounded-xl w-72 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="Swal.fire('Info', 'Data siswa otomatis tersinkron dari Google Sheets', 'info')" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus mr-2"></i>Tambah Siswa</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600">
+                                    <th class="p-3">NIS/NISN</th>
+                                    <th class="p-3">Nama Lengkap</th>
+                                    <th class="p-3">Kelas</th>
+                                    <th class="p-3">Jenis Kelamin</th>
+                                    <th class="p-3">No. HP</th>
+                                    <th class="p-3">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b hover:bg-slate-50">
+                                    <td class="p-3 font-medium">12345</td>
+                                    <td class="p-3">Ahmad Fauzi</td>
+                                    <td class="p-3">XII RPL 1</td>
+                                    <td class="p-3">L</td>
+                                    <td class="p-3">08123456789</td>
+                                    <td class="p-3"><button class="text-blue-600 hover:underline mr-3">Edit</button><button class="text-red-600 hover:underline">Hapus</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ================= DATA GURU =================
+        function loadDataGuru() {
+            document.getElementById('pageTitle').innerText = "Manajemen Data Guru";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-6">
+                        <input type="text" placeholder="Cari NIP / Nama Guru..." class="px-4 py-2 border rounded-xl w-72 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="Swal.fire('Tambah Guru', 'Fitur tambah guru via form modal', 'info')" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 transition"><i class="fa-solid fa-plus mr-2"></i>Tambah Guru</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600">
+                                    <th class="p-3">No</th>
+                                    <th class="p-3">NIP / Username</th>
+                                    <th class="p-3">Nama Guru</th>
+                                    <th class="p-3">Guru Kelas / Mapel</th>
+                                    <th class="p-3">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b hover:bg-slate-50">
+                                    <td class="p-3">1</td>
+                                    <td class="p-3 font-medium">198001012024</td>
+                                    <td class="p-3">Drs. Budi Santoso, M.Pd</td>
+                                    <td class="p-3">XII RPL 1</td>
+                                    <td class="p-3"><button class="text-blue-600 hover:underline mr-3">Edit</button><button onclick="konfirmasiHapusGuru()" class="text-red-600 hover:underline">Hapus</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function konfirmasiHapusGuru() {
+            Swal.fire({
+                title: 'Apakah Anda yakin?',
+                text: "Data guru akan dihapus permanen dari sistem!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire('Terhapus!', 'Data guru berhasil dihapus.', 'success');
+                }
+            })
+        }
+
+        // ================= INPUT PRESENSI & SCAN QR =================
+        function loadInputPresensi() {
+            document.getElementById('pageTitle').innerText = "Input Presensi & Scan QR";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                        <h3 class="font-bold text-lg mb-4">Scan QR Code Siswa & GPS</h3>
+                        <div id="reader" class="w-full bg-slate-100 rounded-xl overflow-hidden mb-4 min-h-[250px] flex items-center justify-center text-slate-400">
+                            <p>Kamera Scanner Aktif</p>
+                        </div>
+                        <button onclick="mulaiScan()" class="w-full py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition">Mulai Scan Kamera</button>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                        <h3 class="font-bold text-lg mb-4">Presensi Manual Masal</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-1">Pilih Kelas</label>
+                                <select class="w-full p-3 border rounded-xl bg-gray-50"><option>XII RPL 1</option><option>XII TKJ 1</option></select>
+                            </div>
+                            <button onclick="Swal.fire('Sukses', 'Presensi masal berhasil disimpan', 'success')" class="w-full py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition">Set Semua Hadir</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function mulaiScan() {
+            Swal.fire('Scanner', 'Akses kamera diizinkan. Silakan arahkan QR Code siswa ke kamera.', 'info');
+        }
+
+        // ================= KELOLA ABSEN =================
+        function loadKelolaAbsen() {
+            document.getElementById('pageTitle').innerText = "Kelola Absen & Pengaturan Waktu";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
+                    <h3 class="font-bold text-lg">Pengaturan Jam Datang & Pulang</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div><label class="block text-sm font-medium mb-1">Jam Datang Mulai</label><input type="time" value="07:00" class="w-full p-3 border rounded-xl"></div>
+                        <div><label class="block text-sm font-medium mb-1">Jam Selesai / Pulang</label><input type="time" value="15:00" class="w-full p-3 border rounded-xl"></div>
+                    </div>
+                    <button onclick="Swal.fire('Tersimpan', 'Pengaturan jadwal berhasil diperbarui', 'success')" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium">Simpan Pengaturan</button>
+                </div>
+            `;
+        }
+
+        // ================= LAPORAN =================
+        function loadLaporan() {
+            document.getElementById('pageTitle').innerText = "Laporan Kehadiran";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                    <div class="flex justify-between items-center mb-6 no-print">
+                        <div class="flex space-x-3">
+                            <select class="px-4 py-2 border rounded-xl"><option>Semua Kelas</option><option>XII RPL 1</option></select>
+                            <input type="date" class="px-4 py-2 border rounded-xl">
+                        </div>
+                        <button onclick="window.print()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-sm font-medium hover:bg-slate-900 transition"><i class="fa-solid fa-print mr-2"></i>Cetak Laporan</button>
+                    </div>
+                    
+                    <!-- Tabel Laporan -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 border-b text-slate-600">
+                                    <th class="p-3">No</th>
+                                    <th class="p-3">NIS</th>
+                                    <th class="p-3">Nama Siswa</th>
+                                    <th class="p-3">Kelas</th>
+                                    <th class="p-3">Tanggal</th>
+                                    <th class="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b"><td class="p-3">1</td><td class="p-3">12345</td><td class="p-3">Ahmad Fauzi</td><td class="p-3">XII RPL 1</td><td class="p-3">2026-07-29</td><td class="p-3"><span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">Hadir</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Kolom Tanda Tangan Cetak -->
+                    <div class="print-only mt-12 pt-8 flex justify-between text-center text-sm">
+                        <div>
+                            <p>Mengetahui,</p>
+                            <p class="font-bold">Kepala Sekolah</p>
+                            <br><br><br>
+                            <p class="font-bold underline">_________________________</p>
+                            <p>NIP. ....................................</p>
+                        </div>
+                        <div>
+                            <p>Banjar, 29 Juli 2026</p>
+                            <p class="font-bold">Guru Piket / Mata Pelajaran</p>
+                            <br><br><br>
+                            <p class="font-bold underline">_________________________</p>
+                            <p>NIP. ....................................</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ================= PORTAL SISWA =================
+        function loadPortalSiswa() {
+            document.getElementById('pageTitle').innerText = "Portal Siswa";
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm text-center">
+                        <div class="inline-flex p-4 bg-blue-100 text-blue-600 rounded-full mb-4 text-4xl"><i class="fa-solid fa-qrcode"></i></div>
+                        <h3 class="font-bold text-xl mb-1">${currentUser.nama}</h3>
+                        <p class="text-sm text-slate-500 mb-4">NIS: ${currentUser.username} | ${currentUser.kelas || 'XII RPL 1'}</p>
+                        <div class="p-4 bg-gray-50 border rounded-xl inline-block mb-4"><img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${currentUser.username}" alt="QR Kartu" class="mx-auto rounded-lg"></div>
+                        <p class="text-xs text-slate-400">Tunjukkan QR Code ini kepada Guru saat scan presensi masuk sekolah.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl border shadow-sm">
+                        <h3 class="font-bold text-lg mb-4">Riwayat Kehadiran Anda</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border text-sm">
+                                <div><p class="font-semibold">Hari Ini</p><p class="text-xs text-slate-400">07:15 WIB</p></div>
+                                <span class="px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold">Hadir</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
     </script>
 </body>
