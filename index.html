@@ -1570,29 +1570,34 @@
         // ================================================================
         //  GOOGLE APPS SCRIPT COMMUNICATION
         // ================================================================
-        function callAppScript(fn, params, callback) {
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbz05Wu566K3tdAO524H_7f96ytkSFYX_ailzBbxS_JKxFx7ovcKCzKS0EcG760Ph1DA/exec';
-            fetch(scriptUrl, {
-                method: 'POST',
-                mode: 'cors',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: fn, params: params })
-            })
-            .then(response => response.text()) // ambil sebagai text dulu
-            .then(text => {
-                try {
-                    const data = JSON.parse(text);
-                    if (callback) callback(data);
-                } catch (e) {
-                    console.error('Gagal parsing JSON dari Apps Script:', text);
-                    if (callback) callback(null);
-                }
-            })
-            .catch(error => {
-                console.error('Error calling Apps Script:', error);
-                if (callback) callback(null);
-            });
+function callAppScript(fn, params, callback) {
+    const scriptUrl = 'https://script.google.com/macros/s/AKfycbxhzgaNa8rLgqrFmtSdL5fUYX7eLmhmgkbRo7ijyUWapvTvWxYNqF3lfBEAQy4bLQh-/exec';
+    fetch(scriptUrl, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: fn, params: params })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('HTTP error ' + response.status);
         }
+        return response.text();
+    })
+    .then(text => {
+        try {
+            const data = JSON.parse(text);
+            if (callback) callback(data);
+        } catch (e) {
+            console.error('Gagal parsing JSON dari Apps Script:', text);
+            if (callback) callback(null);
+        }
+    })
+    .catch(error => {
+        console.error('Error calling Apps Script:', error);
+        if (callback) callback(null);
+    });
+}
 
         // ================================================================
         //  AUTH
@@ -1739,29 +1744,29 @@
         // ================================================================
         //  LOAD DATA
         // ================================================================
-        function loadAllData() {
-            callAppScript('getAllData', {}, function(data) {
-                if (data) {
-                    siswaData = data.siswa || [];
-                    guruData = data.guru || [];
-                    absensiData = data.absensi || [];
-                    jadwalData = data.jadwal || [];
-                    liburData = data.libur || [];
-                    updateDashboard();
-                    renderSiswa();
-                    renderGuru();
-                    renderLaporan();
-                    renderJadwal();
-                    renderLibur();
-                    loadKelasOptions('siswaFilterKelas');
-                    loadKelasOptions('guruFilterKelas');
-                    loadKelasOptions('laporanFilterKelas');
-                    loadKelasOptions('presensiFilterKelas');
-                } else {
-                    alert('Gagal memuat data. Periksa koneksi atau URL Web App.');
-                }
-            });
+function loadAllData() {
+    callAppScript('getAllData', {}, function(data) {
+        if (data) {
+            siswaData = data.siswa || [];
+            guruData = data.guru || [];
+            absensiData = data.absensi || [];
+            jadwalData = data.jadwal || [];
+            liburData = data.libur || [];
+            updateDashboard();
+            renderSiswa();
+            renderGuru();
+            renderLaporan();
+            renderJadwal();
+            renderLibur();
+            loadKelasOptions('siswaFilterKelas');
+            loadKelasOptions('guruFilterKelas');
+            loadKelasOptions('laporanFilterKelas');
+            loadKelasOptions('presensiFilterKelas');
+        } else {
+            alert('Gagal memuat data dari server. Periksa koneksi internet dan pastikan URL Web App benar.\n\nCoba buka URL berikut di browser untuk memastikan Apps Script aktif:\n' + scriptUrl);
         }
+    });
+}
 
         // ================================================================
         //  DASHBOARD
