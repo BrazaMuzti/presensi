@@ -28,6 +28,68 @@
         </div>
     </div>
 
+// CONTOH BAGIAN PENANGANAN SETELAH LOGIN BERHASIL DI index.html
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const role = document.getElementById('loginRole').value; // 'siswa' atau 'guru'
+    const user = document.getElementById('loginUser').value;
+    const pass = document.getElementById('loginPass').value;
+
+    // Tampilkan loading sebentar
+    Swal.fire({ title: 'Memeriksa...', didOpen: () => Swal.showLoading() });
+
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Menggunakan text/plain menghindari masalah CORS preflight di Apps Script
+            body: JSON.stringify({
+                action: 'login',
+                role: role,
+                username: user,
+                password: pass
+            })
+        });
+
+        const res = await response.json();
+        
+        if (res.status === 'success') {
+            Swal.close();
+            
+            // SIMPAN DATA SESI LOGIN KE LOCALSTORAGE
+            localStorage.setItem('currentUser', JSON.stringify(res.user));
+            
+            // PANGGIL FUNGSI UNTUK MEMBUKA DASHBOARD SESUAI ROLE
+            bukaDashboard(res.user);
+            
+        } else {
+            Swal.fire('Gagal Login', res.message || 'Username atau password salah', 'error');
+        }
+    } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'Gagal terhubung ke server database.', 'error');
+    }
+}
+
+function bukaDashboard(user) {
+    // Sembunyikan halaman login, tampilkan container utama aplikasi
+    document.getElementById('loginPage').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+
+    // Tampilkan nama akun di header/dashboard
+    document.getElementById('userNameDisplay').innerText = user.nama + " (" + (user.kelas || user.role.toUpperCase()) + ")";
+
+    // Sembunyikan menu tertentu jika yang login adalah Siswa (karena siswa tidak boleh akses data guru/kelola absen)
+    if (user.role === 'siswa') {
+        // Sembunyikan menu manajemen guru, kelola absen, dll jika perlu
+        // Tampilkan fitur khusus siswa (seperti kartu digital / edit profil sendiri)
+        muatDashboardSiswa(user);
+    } else {
+        // Jika Guru / Admin
+        muatDashboardGuru(user);
+    }
+}    
+    
     <!-- App Container (Hidden by default) -->
     <div id="appContainer" class="hidden">
         <nav class="bg-indigo-900 text-white p-4 flex justify-between items-center">
