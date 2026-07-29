@@ -4,14 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>Sistem Presensi Sekolah</title>
-    <!-- Font & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
     </script>
     <style>
-        /* ===== RESET & BASE ===== */
+        /* (CSS sama seperti sebelumnya – tidak diubah) */
         * {
             margin: 0;
             padding: 0;
@@ -97,8 +95,6 @@
         tr:hover td {
             background: #f8faff;
         }
-
-        /* ===== SCROLLBAR ===== */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -111,8 +107,6 @@
             background: var(--primary-light);
             border-radius: 10px;
         }
-
-        /* ===== LOGIN PAGE ===== */
         .login-page {
             min-height: 100vh;
             display: flex;
@@ -261,8 +255,6 @@
         .login-box .role-selector button:hover:not(.active) {
             background: #dce1e8;
         }
-
-        /* ===== APP LAYOUT ===== */
         .app-container {
             display: none;
             min-height: 100vh;
@@ -270,8 +262,6 @@
         .app-container.active {
             display: flex;
         }
-
-        /* ===== SIDEBAR ===== */
         .sidebar {
             width: var(--sidebar-width);
             background: #fff;
@@ -390,8 +380,6 @@
         .sidebar .user-info .logout-btn:hover {
             color: var(--danger);
         }
-
-        /* ===== MAIN CONTENT ===== */
         .main-content {
             margin-left: var(--sidebar-width);
             flex: 1;
@@ -430,8 +418,6 @@
             color: var(--dark);
             padding: 6px;
         }
-
-        /* ===== CARDS ===== */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -489,8 +475,6 @@
         .stat-card.blue .number {
             color: var(--info);
         }
-
-        /* ===== PANELS ===== */
         .panel {
             display: none;
             animation: fadeIn 0.35s ease;
@@ -508,7 +492,6 @@
                 transform: translateY(0);
             }
         }
-
         .panel-header {
             display: flex;
             align-items: center;
@@ -521,8 +504,6 @@
             font-size: 18px;
             font-weight: 700;
         }
-
-        /* ===== BUTTONS ===== */
         .btn {
             padding: 10px 20px;
             border-radius: 10px;
@@ -583,8 +564,6 @@
             font-size: 11px;
             border-radius: 6px;
         }
-
-        /* ===== TABLE WRAPPER ===== */
         .table-wrap {
             background: #fff;
             border-radius: var(--radius);
@@ -628,8 +607,6 @@
             padding: 0 14px;
             min-width: 80px;
         }
-
-        /* ===== MODAL ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -699,8 +676,6 @@
             grid-template-columns: 1fr 1fr;
             gap: 14px;
         }
-
-        /* ===== QR SCAN ===== */
         .qr-scanner {
             display: flex;
             flex-direction: column;
@@ -729,8 +704,6 @@
             display: flex;
             gap: 10px;
         }
-
-        /* ===== GURU KELAS ===== */
         .guru-kelas-badge {
             background: var(--secondary);
             padding: 2px 12px;
@@ -740,8 +713,6 @@
             color: var(--primary);
             display: inline-block;
         }
-
-        /* ===== RESPONSIVE ===== */
         @media (max-width: 992px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -810,8 +781,6 @@
                 align-items: stretch;
             }
         }
-
-        /* ===== MISC ===== */
         .badge {
             padding: 4px 12px;
             border-radius: 20px;
@@ -860,8 +829,6 @@
         .w-full {
             width: 100%;
         }
-
-        /* Tanda tangan */
         .ttd-area {
             display: flex;
             justify-content: space-between;
@@ -889,7 +856,6 @@
             font-size: 12px;
             color: var(--gray);
         }
-
         .radio-group {
             display: flex;
             gap: 12px;
@@ -908,7 +874,6 @@
             height: 18px;
             accent-color: var(--primary);
         }
-
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -919,8 +884,6 @@
             margin-bottom: 12px;
             opacity: 0.3;
         }
-
-        /* QR Code display */
         .qr-display {
             background: #fff;
             padding: 20px;
@@ -931,6 +894,24 @@
         .qr-display img {
             width: 160px;
             height: 160px;
+        }
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+            font-size: 16px;
+            color: var(--gray);
+        }
+        .loading-spinner i {
+            font-size: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
         }
     </style>
 </head>
@@ -975,13 +956,12 @@
         </div>
     </div>
 
-    <!-- ===== SIDEBAR OVERLAY (mobile) ===== -->
+    <!-- ===== SIDEBAR OVERLAY ===== -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <!-- ===== APP CONTAINER ===== -->
     <div class="app-container" id="appContainer">
-
-        <!-- ===== SIDEBAR ===== -->
+        <!-- SIDEBAR -->
         <aside class="sidebar" id="sidebar">
             <div class="brand">
                 <i class="fas fa-graduation-cap"></i>
@@ -1030,9 +1010,8 @@
             </div>
         </aside>
 
-        <!-- ===== MAIN CONTENT ===== -->
+        <!-- MAIN -->
         <main class="main-content">
-            <!-- Header -->
             <div class="header">
                 <div style="display:flex;align-items:center;gap:12px;">
                     <button class="menu-toggle" onclick="toggleSidebar()">
@@ -1048,7 +1027,7 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: DASHBOARD ===== -->
+            <!-- PANEL DASHBOARD -->
             <div class="panel active" id="panel-dashboard">
                 <div class="stats-grid" id="statsGrid">
                     <div class="stat-card">
@@ -1077,16 +1056,12 @@
                         <div class="label">Alpha</div>
                     </div>
                 </div>
-
-                <!-- Grafik -->
                 <div style="background:#fff;border-radius:var(--radius);padding:20px;box-shadow:0 2px 12px rgba(0,0,0,0.05);margin-bottom:20px;">
                     <h4 style="margin-bottom:14px;font-weight:600;">
                         <i class="fas fa-chart-bar" style="color:var(--primary);"></i> Statistik Kehadiran Bulan Ini
                     </h4>
                     <canvas id="attendanceChart" height="180"></canvas>
                 </div>
-
-                <!-- Akses cepat -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;">
                     <button class="btn btn-primary" onclick="showPanel('presensi')">
                         <i class="fas fa-camera"></i> Scan Absensi
@@ -1103,7 +1078,7 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: DATA SISWA ===== -->
+            <!-- PANEL SISWA -->
             <div class="panel" id="panel-siswa">
                 <div class="panel-header">
                     <h3><i class="fas fa-users" style="color:var(--primary);"></i> Data Siswa</h3>
@@ -1137,16 +1112,7 @@
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>NIS</th>
-                                    <th>Nama</th>
-                                    <th>Kelas</th>
-                                    <th>JK</th>
-                                    <th>HP</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>JK</th><th>HP</th><th>Aksi</th></tr></thead>
                             <tbody id="siswaTableBody">
                                 <tr><td colspan="6" class="text-center">Memuat data...</td></tr>
                             </tbody>
@@ -1155,7 +1121,7 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: DATA GURU ===== -->
+            <!-- PANEL GURU -->
             <div class="panel" id="panel-guru">
                 <div class="panel-header">
                     <h3><i class="fas fa-chalkboard-teacher" style="color:var(--primary);"></i> Data Guru</h3>
@@ -1189,15 +1155,7 @@
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>Username</th>
-                                    <th>Nama</th>
-                                    <th>Guru Kelas</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>No</th><th>Username</th><th>Nama</th><th>Guru Kelas</th><th>Aksi</th></tr></thead>
                             <tbody id="guruTableBody">
                                 <tr><td colspan="5" class="text-center">Memuat data...</td></tr>
                             </tbody>
@@ -1206,7 +1164,7 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: LAPORAN ===== -->
+            <!-- PANEL LAPORAN -->
             <div class="panel" id="panel-laporan">
                 <div class="panel-header">
                     <h3><i class="fas fa-file-alt" style="color:var(--primary);"></i> Laporan Kehadiran</h3>
@@ -1248,18 +1206,7 @@
                     </div>
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>Tanggal</th>
-                                    <th>NIS</th>
-                                    <th>Nama</th>
-                                    <th>Kelas</th>
-                                    <th>Status</th>
-                                    <th>Mapel</th>
-                                    <th>Jam Datang</th>
-                                    <th>Jam Selesai</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>Tanggal</th><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Mapel</th><th>Jam Datang</th><th>Jam Selesai</th></tr></thead>
                             <tbody id="laporanTableBody">
                                 <tr><td colspan="8" class="text-center">Memuat data...</td></tr>
                             </tbody>
@@ -1268,12 +1215,11 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: KELOLA ABSEN ===== -->
+            <!-- PANEL KELOLA -->
             <div class="panel" id="panel-kelola">
                 <div class="panel-header">
                     <h3><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Kelola Absen & Jadwal</h3>
                 </div>
-                <!-- Jadwal -->
                 <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.05);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
                         <h4><i class="fas fa-clock"></i> Jadwal Mata Pelajaran</h4>
@@ -1288,7 +1234,6 @@
                         </table>
                     </div>
                 </div>
-                <!-- Hari Libur -->
                 <div style="background:#fff;border-radius:var(--radius);padding:16px;box-shadow:0 2px 12px rgba(0,0,0,0.05);">
                     <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
                         <h4><i class="fas fa-calendar-times"></i> Hari Libur</h4>
@@ -1305,7 +1250,7 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: INPUT PRESENSI ===== -->
+            <!-- PANEL PRESENSI -->
             <div class="panel" id="panel-presensi">
                 <div class="panel-header">
                     <h3><i class="fas fa-camera" style="color:var(--primary);"></i> Input Presensi</h3>
@@ -1318,7 +1263,6 @@
                         </button>
                     </div>
                 </div>
-                <!-- Filter kelas -->
                 <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;align-items:center;">
                     <select id="presensiFilterKelas" onchange="loadPresensiSiswa()" style="width:auto;min-width:140px;">
                         <option value="">Pilih Kelas</option>
@@ -1333,7 +1277,6 @@
                         <i class="fas fa-sync-alt"></i> Ganti Kamera
                     </button>
                 </div>
-                <!-- Scanner -->
                 <div id="scannerContainer" style="display:none;background:#000;border-radius:var(--radius);padding:12px;margin-bottom:14px;text-align:center;">
                     <video id="scannerVideo" autoplay playsinline style="max-width:100%;max-height:300px;border-radius:10px;"></video>
                     <div id="scanStatus" class="scan-status">Arahkan kamera ke QR Code</div>
@@ -1341,28 +1284,16 @@
                         <i class="fas fa-times"></i> Tutup Scanner
                     </button>
                 </div>
-                <!-- Tabel presensi -->
                 <div class="table-wrap">
                     <div style="overflow-x:auto;">
                         <table>
-                            <thead>
-                                <tr>
-                                    <th>NIS</th>
-                                    <th>Nama</th>
-                                    <th>Kelas</th>
-                                    <th>Status</th>
-                                    <th>Jam Datang</th>
-                                    <th>Jam Selesai</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
+                            <thead><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Status</th><th>Jam Datang</th><th>Jam Selesai</th><th>Aksi</th></tr></thead>
                             <tbody id="presensiTableBody">
                                 <tr><td colspan="7" class="text-center">Pilih kelas untuk memulai</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
-                <!-- Tanda tangan -->
                 <div class="ttd-area">
                     <div class="ttd-box">
                         <div class="ttd-line"></div>
@@ -1377,60 +1308,30 @@
                 </div>
             </div>
 
-            <!-- ===== PANEL: STUDENT EDIT ===== -->
+            <!-- PANEL STUDENT EDIT -->
             <div class="panel" id="panel-siswa-edit">
                 <div class="panel-header">
                     <h3><i class="fas fa-user-edit" style="color:var(--primary);"></i> Edit Profil Siswa</h3>
                 </div>
                 <div style="background:#fff;border-radius:var(--radius);padding:24px;box-shadow:0 2px 12px rgba(0,0,0,0.05);max-width:500px;">
                     <form id="studentEditForm" onsubmit="updateStudentProfile(event)">
-                        <div class="form-group">
-                            <label>NIS</label>
-                            <input type="text" id="editNIS" readonly style="background:#f5f7fa;" />
+                        <div class="form-group"><label>NIS</label><input type="text" id="editNIS" readonly style="background:#f5f7fa;" /></div>
+                        <div class="form-group"><label>Nama Lengkap</label><input type="text" id="editNama" required /></div>
+                        <div class="form-group"><label>Kelas</label><input type="text" id="editKelas" required /></div>
+                        <div class="form-group"><label>Jenis Kelamin</label>
+                            <select id="editJK"><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
                         </div>
-                        <div class="form-group">
-                            <label>Nama Lengkap</label>
-                            <input type="text" id="editNama" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Kelas</label>
-                            <input type="text" id="editKelas" required />
-                        </div>
-                        <div class="form-group">
-                            <label>Jenis Kelamin</label>
-                            <select id="editJK">
-                                <option value="L">Laki-laki</option>
-                                <option value="P">Perempuan</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tanggal Lahir</label>
-                            <input type="date" id="editTglLahir" />
-                        </div>
-                        <div class="form-group">
-                            <label>Agama</label>
-                            <input type="text" id="editAgama" />
-                        </div>
-                        <div class="form-group">
-                            <label>No. HP</label>
-                            <input type="text" id="editHP" />
-                        </div>
-                        <div class="form-group">
-                            <label>Alamat</label>
-                            <textarea id="editAlamat" rows="2"></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label>Password Baru (kosongkan jika tidak diubah)</label>
-                            <input type="password" id="editPassword" placeholder="Password baru" />
-                        </div>
-                        <button type="submit" class="btn btn-primary w-full">
-                            <i class="fas fa-save"></i> Simpan Perubahan
-                        </button>
+                        <div class="form-group"><label>Tanggal Lahir</label><input type="date" id="editTglLahir" /></div>
+                        <div class="form-group"><label>Agama</label><input type="text" id="editAgama" /></div>
+                        <div class="form-group"><label>No. HP</label><input type="text" id="editHP" /></div>
+                        <div class="form-group"><label>Alamat</label><textarea id="editAlamat" rows="2"></textarea></div>
+                        <div class="form-group"><label>Password Baru (kosongkan jika tidak diubah)</label><input type="password" id="editPassword" placeholder="Password baru" /></div>
+                        <button type="submit" class="btn btn-primary w-full"><i class="fas fa-save"></i> Simpan Perubahan</button>
                     </form>
                 </div>
             </div>
 
-            <!-- ===== PANEL: QR CARD ===== -->
+            <!-- PANEL QR CARD -->
             <div class="panel" id="panel-qr-card">
                 <div class="panel-header">
                     <h3><i class="fas fa-qrcode" style="color:var(--primary);"></i> Kartu Digital QR</h3>
@@ -1454,8 +1355,6 @@
     </div>
 
     <!-- ===== MODALS ===== -->
-
-    <!-- Modal Siswa -->
     <div class="modal-overlay" id="modalSiswa">
         <div class="modal">
             <div class="modal-header">
@@ -1495,7 +1394,6 @@
         </div>
     </div>
 
-    <!-- Modal Guru -->
     <div class="modal-overlay" id="modalGuru">
         <div class="modal">
             <div class="modal-header">
@@ -1513,7 +1411,6 @@
         </div>
     </div>
 
-    <!-- Modal Jadwal -->
     <div class="modal-overlay" id="modalJadwal">
         <div class="modal">
             <div class="modal-header">
@@ -1533,7 +1430,6 @@
         </div>
     </div>
 
-    <!-- Modal Libur -->
     <div class="modal-overlay" id="modalLibur">
         <div class="modal">
             <div class="modal-header">
@@ -1566,30 +1462,37 @@
         let scannerActive = false;
         let cameraStream = null;
         let cameraFacing = 'environment';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1tpnJLhnB0Qf1m8UmpvG5Qip7ISUsuUAI40Jg388Y0xIFmr9z1EPMd0AoKzAciMHi/exec';
 
         // ================================================================
         //  GOOGLE APPS SCRIPT COMMUNICATION
         // ================================================================
         function callAppScript(fn, params, callback) {
-            const scriptUrl = 'https://script.google.com/macros/s/AKfycbx1tpnJLhnB0Qf1m8UmpvG5Qip7ISUsuUAI40Jg388Y0xIFmr9z1EPMd0AoKzAciMHi/exec';
-            fetch(scriptUrl, {
+            console.log(`[callAppScript] Mengirim request ke ${SCRIPT_URL} dengan action: ${fn}`);
+            fetch(SCRIPT_URL, {
                 method: 'POST',
                 mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: fn, params: params })
             })
-            .then(response => response.text()) // ambil sebagai text dulu
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status} - ${response.statusText}`);
+                }
+                return response.text();
+            })
             .then(text => {
                 try {
                     const data = JSON.parse(text);
+                    console.log(`[callAppScript] Response dari ${fn}:`, data);
                     if (callback) callback(data);
                 } catch (e) {
-                    console.error('Gagal parsing JSON dari Apps Script:', text);
+                    console.error(`[callAppScript] Gagal parsing JSON dari ${fn}:`, text);
                     if (callback) callback(null);
                 }
             })
             .catch(error => {
-                console.error('Error calling Apps Script:', error);
+                console.error(`[callAppScript] Error memanggil Apps Script (${fn}):`, error);
                 if (callback) callback(null);
             });
         }
@@ -1619,7 +1522,6 @@
             }
 
             callAppScript('login', { username, password, role: loginRole }, function(result) {
-                console.log('Login response:', result);
                 if (result && result.success && result.user) {
                     currentUser = result.user;
                     errorEl.style.display = 'none';
@@ -1655,12 +1557,10 @@
                 logout();
                 return;
             }
-            // Update user info
             document.getElementById('userName').textContent = currentUser.nama || currentUser.username;
             document.getElementById('userRole').textContent = currentUser.role === 'siswa' ? 'Siswa' : 'Guru / Admin';
             document.getElementById('userAvatar').textContent = (currentUser.nama || 'U')[0].toUpperCase();
 
-            // Show/hide student menus
             const isSiswa = currentUser.role === 'siswa';
             document.getElementById('studentEditMenu').style.display = isSiswa ? 'flex' : 'none';
             document.getElementById('qrCardMenu').style.display = isSiswa ? 'flex' : 'none';
@@ -1740,6 +1640,11 @@
         //  LOAD DATA
         // ================================================================
         function loadAllData() {
+            // Tampilkan loading di tabel
+            document.querySelectorAll('.table-wrap tbody').forEach(tbody => {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>`;
+            });
+
             callAppScript('getAllData', {}, function(data) {
                 if (data) {
                     siswaData = data.siswa || [];
@@ -1747,6 +1652,7 @@
                     absensiData = data.absensi || [];
                     jadwalData = data.jadwal || [];
                     liburData = data.libur || [];
+                    console.log(`Data berhasil dimuat: ${siswaData.length} siswa, ${guruData.length} guru, ${absensiData.length} absensi`);
                     updateDashboard();
                     renderSiswa();
                     renderGuru();
@@ -1758,7 +1664,12 @@
                     loadKelasOptions('laporanFilterKelas');
                     loadKelasOptions('presensiFilterKelas');
                 } else {
-                    alert('Gagal memuat data. Periksa koneksi atau URL Web App.');
+                    alert('⚠️ Gagal memuat data dari server.\n\n' +
+                        'Periksa:\n' +
+                        '1. Koneksi internet Anda.\n' +
+                        '2. URL Web App (pastikan sudah di-deploy dengan benar).\n' +
+                        `3. URL saat ini: ${SCRIPT_URL}\n\n` +
+                        'Buka URL tersebut di browser untuk memastikan Apps Script aktif (harus menampilkan pesan JSON atau HTML).');
                 }
             });
         }
@@ -2389,7 +2300,6 @@
                 status.textContent = '📷 Arahkan ke QR Code...';
                 status.className = 'scan-status';
 
-                // Simulasi scan setelah 3 detik
                 setTimeout(() => {
                     if (scannerActive) {
                         status.textContent = '✅ QR Code terdeteksi! NIS: 2024001';
@@ -2560,11 +2470,13 @@
             document.getElementById('loginPage').style.display = 'flex';
             document.getElementById('appContainer').classList.remove('active');
             setRole('siswa');
+            // Coba muat data untuk mengecek koneksi, tapi tidak masalah jika gagal
             loadAllData();
         });
 
         console.log('📚 Aplikasi Presensi Sekolah siap digunakan.');
         console.log('🔑 Demo login: Siswa (NIS: 12345, pass: 12345) | Guru (NIP: admin, pass: admin)');
+        console.log('🌐 URL Web App saat ini:', SCRIPT_URL);
     </script>
 </body>
 </html>
