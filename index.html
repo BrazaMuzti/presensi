@@ -23,11 +23,7 @@
 
     /* Sticky Table for Input Nilai */
     .sticky-col-1 { position: sticky; left: 0; z-index: 10; background-color: #ffffff; }
-    .sticky-col-2 { position: sticky; left: 36px; z-index: 10; background-color: #ffffff; }
-    .sticky-col-3 { position: sticky; left: 115px; z-index: 10; background-color: #ffffff; }
-    .sticky-header-col-1 { position: sticky; top: 0; left: 0; z-index: 30; background-color: #f8fafc; }
-    .sticky-header-col-2 { position: sticky; top: 0; left: 36px; z-index: 30; background-color: #f8fafc; }
-    .sticky-header-col-3 { position: sticky; top: 0; left: 115px; z-index: 30; background-color: #f8fafc; }
+    .sticky-header-col-1 { position: sticky; top: 0; left: 0; text-align:center; z-index: 30; background-color: #f8fafc; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col">
@@ -37,7 +33,7 @@
     // ==============================================
     // KONFIGURASI API & STATE GLOBAL
     // ==============================================
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycITkI_eyFmxXyOeJKaURmOLTUzkTnOe1VkTGbD9GJt-6-UABwGTBLab0eXQdE2PO1/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzP2dUhnT31Ah13ACSOtuX4GmdgKbfUFw5NWtF8TLxEV5Id-NJDsudU5RljXiaR_E5f/exec";
 
     let currentUser = {};
     let globalSiswaData = [];
@@ -81,10 +77,10 @@
       const logo3 = document.getElementById('dataNilaiLogo');
       const logo4 = document.getElementById('dataNilaiLogo2');
       const logoLogin = document.getElementById('loginSchoolLogo');
-      
+
       document.querySelectorAll('.lapSchoolNameClass').forEach(e => e.innerText = schoolProfile.nama);
       document.querySelectorAll('.lapSchoolAlamatClass').forEach(e => e.innerText = schoolProfile.alamat);
-      
+
       if(logo1 && schoolProfile.logo) logo1.src = schoolProfile.logo;
       if(logo2 && schoolProfile.logo2) logo2.src = schoolProfile.logo2;
       if(logo3 && schoolProfile.logo) logo3.src = schoolProfile.logo;
@@ -124,11 +120,11 @@
 
           const nowM = new Date();
           if(document.getElementById('nilaiInputBulanTahun')) document.getElementById('nilaiInputBulanTahun').value = `${nowM.getFullYear()}-${String(nowM.getMonth()+1).padStart(2,'0')}`;
-          
+
           applySchoolProfile();
           let fTgl = document.getElementById('statFilterTanggal');
           if(fTgl) { fTgl.innerHTML='<option value="">Semua Hari</option>'; for(let i=1;i<=31;i++){fTgl.innerHTML+=`<option value="${i}">Tanggal ${i}</option>`;} }
-          
+
           // Set checkbox state hari libur
           if(document.getElementById('chkLiburSabtu')) document.getElementById('chkLiburSabtu').checked = liburRutin.sabtu;
           if(document.getElementById('chkLiburMinggu')) document.getElementById('chkLiburMinggu').checked = liburRutin.minggu;
@@ -265,7 +261,7 @@
         <td class="p-2 border text-center"><button onclick="hapusHariLibur(${i})" class="text-red-500 font-bold"><i class="fa-solid fa-trash"></i></button></td></tr>`;
       }
     }
-    
+
     function addHariLibur() {
       const tgl = document.getElementById('inputTglLibur').value; const ket = document.getElementById('inputKetLibur').value;
       if(!tgl || !ket) return alert("Pilih Tanggal dan isi Keterangan!");
@@ -315,7 +311,7 @@
     function submitManualPresensi() {
       const nis = document.getElementById('manualSiswa').value; const status = document.getElementById('manualStatus').value; const kelas = document.getElementById('manualKelas').value;
       if(!nis || !status) return alert("Pilih Siswa dan Status!");
-      
+
       const mapelId = 'manualMapel'; const mapel = document.getElementById(mapelId).value;
       if(!mapel) return alert("Pilih Mata Pelajaran / Ekstrakurikuler terlebih dahulu!");
 
@@ -373,7 +369,7 @@
       if (document.getElementById('mapelListBody')) document.getElementById('mapelListBody').innerHTML = renderRows(globalMapelData, 'Mapel');
       if (document.getElementById('eskulListBody')) document.getElementById('eskulListBody').innerHTML = renderRows(globalEskulData, 'Ekstrakurikuler');
       if (document.getElementById('kelasListBody')) document.getElementById('kelasListBody').innerHTML = renderRows(globalKelasData, 'Kelas');
-      
+
       const tbodyJdw = document.getElementById('jadwalListBody');
       if(tbodyJdw) {
          tbodyJdw.innerHTML = globalJadwalDashboard.map((j,i) => `<tr class="border-b"><td class="p-2">${j[0]}</td><td class="p-2">${j[1]}</td><td class="p-2">${j[2]}</td><td class="p-2 text-center"><button onclick="deleteJadwalItem(${i})" class="text-red-500" title="Hapus"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="4" class="text-center p-2 text-slate-400">Kosong</td></tr>';
@@ -411,7 +407,7 @@
       globalJadwalDashboard.push([w,k,m]);
       fetchAPI('syncMasterColumn', { type: 'Jadwal', arrayData: globalJadwalDashboard }).then(res => { renderKelolaMasterData(); renderJadwalDashboard(); });
     }
-    
+
     function deleteJadwalItem(idx) {
       if(!confirm("Hapus jadwal ini?")) return;
       globalJadwalDashboard.splice(idx, 1);
@@ -429,9 +425,9 @@
 
       if(!kelas || !mapel) { thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="15" class="text-center p-4">Pilih Kelas & Mapel terlebih dahulu</td></tr>'; return; }
 
-      let dynamicJenisSet = new Set(['Tugas 1', 'Tugas 2', 'Tugas 3', 'Praktek', 'ASAS', 'ASAJ']); 
+      let dynamicJenisSet = new Set(['Tugas 1', 'Tugas 2', 'Tugas 3', 'Praktek', 'ASAS', 'ASAJ']);
       let existingGrades = {}; let ketGrades = {};
-      
+
       for(let i=1; i<globalNilaiData.length; i++) {
         const r = globalNilaiData[i]; if(!r) continue;
         if((!semester || r[1] === semester) && (!mapel || r[5] === mapel) && r[4] === kelas) {
@@ -450,32 +446,29 @@
       activeJenisArr.forEach(j => thHtml += `<th class="p-2 text-center w-20 border-r">${j}</th>`);
       thHtml += `<th class="p-2 text-center w-16 bg-emerald-100 border-r">Rata2</th><th class="p-2 text-left w-32 bg-rose-50 text-rose-800 border-r">Tugas Yg Belum</th><th class="p-2 text-left w-40">Keterangan</th></tr>`;
       thead.innerHTML = thHtml; tbody.innerHTML = '';
-      
+
       let idx=1;
       for(let i=1; i<globalSiswaData.length; i++) {
         if(globalSiswaData[i][2] === kelas) {
           const nis = String(globalSiswaData[i][0]).trim(); const nama = globalSiswaData[i][1];
           const stGrades = existingGrades[nis] || {};
-          let trHtml = `<tr class="border-b text-sm student-nilai-row" data-nis="${nis}" data-nama="${nama}">
-            <td class="p-2 text-center sticky-col-1 border-r">${idx++}</td>
-            <td class="p-2 font-mono sticky-col-2 border-r">${nis}</td>
-            <td class="p-2 font-bold truncate sticky-col-3 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">${nama}</td>`;
+          let trHtml = `<tr class="border-b text-sm student-nilai-row" data-nis="${nis}" data-nama="${nama}"><td class="sticky-col-1">${idx++}</td><td class="p-2 font-mono">${nis}</td><td class="p-2 font-bold truncate">${nama}</td>`;
           let sum=0, count=0; let missing = [];
-          
+
           activeJenisArr.forEach(j => {
             const extVal = stGrades[j] !== undefined ? stGrades[j] : '';
-            if(extVal !== '') { 
-               sum+=parseFloat(extVal); count++; 
-            } else { 
+            if(extVal !== '') {
+               sum+=parseFloat(extVal); count++;
+            } else {
                let singkatan = j.replace(/Tugas\s*/i, 'T').replace(/Praktek/i, 'P');
-               missing.push(singkatan); 
+               missing.push(singkatan);
             }
             trHtml += `<td class="p-1 text-center border-r"><input type="number" min="0" max="100" class="w-16 border p-1 text-center rounded text-xs nilai-cell" data-jenis="${j}" value="${extVal}" oninput="calcStat(this)"></td>`;
           });
-          
+
           let avg = count > 0 ? (sum/count).toFixed(1) : '0';
           let ketVal = ketGrades[nis] || '';
-          
+
           trHtml += `<td class="p-2 text-center font-bold bg-emerald-50 row-avg border-r">${avg}</td><td class="p-2 text-xs text-rose-600 font-medium missing-cell border-r">${missing.join(', ')}</td><td class="p-1"><input type="text" class="w-full border p-1 text-xs rounded ket-cell" value="${ketVal}" placeholder="Ket..."></td></tr>`;
           tbody.innerHTML += trHtml;
         }
@@ -486,15 +479,15 @@
     function calcStat(inp) {
       const tr = inp.closest('tr'); const inputs = tr.querySelectorAll('.nilai-cell');
       let sum=0, count=0; let missing=[];
-      inputs.forEach(i => { 
-        let v=parseFloat(i.value); 
-        if(!isNaN(v)) { 
-           sum+=v; count++; 
-        } else { 
+      inputs.forEach(i => {
+        let v=parseFloat(i.value);
+        if(!isNaN(v)) {
+           sum+=v; count++;
+        } else {
            let jName = i.getAttribute('data-jenis');
            let singkatan = jName.replace(/Tugas\s*/i, 'T').replace(/Praktek/i, 'P');
-           missing.push(singkatan); 
-        } 
+           missing.push(singkatan);
+        }
       });
       tr.querySelector('.row-avg').innerText = count>0?(sum/count).toFixed(1):'0';
       tr.querySelector('.missing-cell').innerText = missing.join(', ');
@@ -542,7 +535,7 @@
       jenisArr.forEach(j => theadHtml += `<th class="p-2 border">${j}</th>`);
       theadHtml += `<th class="p-2 border bg-emerald-50">Rata-rata</th><th class="p-2 border bg-blue-50">Tertinggi</th><th class="p-2 border bg-amber-50">Terendah</th></tr>`;
       document.getElementById('theadDataNilai').innerHTML = theadHtml; tbody.innerHTML = '';
-      
+
       let idx = 1;
       for (const nis in siswaMap) {
         const s = siswaMap[nis]; let tr = `<tr class="border-b text-sm text-center"><td>${idx++}</td><td class="font-mono text-left">${nis}</td><td class="font-bold text-left truncate">${s.nama}</td>`;
@@ -601,7 +594,7 @@
             tr += `<td class="holiday-col">L</td>`;
           } else {
             let st = rec.days[d];
-            if(st) { rec.total[st]++; let cC = st==='H'?'text-emerald-600':st==='S'?'text-amber-600':st==='I'?'text-blue-600':'text-red-600'; tr += `<td class="${cC} font-bold">${st}</td>`; } 
+            if(st) { rec.total[st]++; let cC = st==='H'?'text-emerald-600':st==='S'?'text-amber-600':st==='I'?'text-blue-600':'text-red-600'; tr += `<td class="${cC} font-bold">${st}</td>`; }
             else { tr += `<td class="text-slate-300">-</td>`; }
           }
         }
@@ -650,7 +643,7 @@
       for(let i=1; i<globalPresensiData.length; i++) {
         const r = globalPresensiData[i]; if(!r || !r[0]) continue;
         const tFull = r[0]; const nis = String(r[1]).trim(); const status = (r[4]||'').toUpperCase(); const mapel = r[7]||'';
-        
+
         if(nis === String(currentUser.NIS).trim()) {
           if(mF && mapel !== mF) continue;
           if(tFull.startsWith(bln)) {
@@ -828,7 +821,7 @@
       const fKelas = document.getElementById('filterSiswaKelas')?.value || '';
       if(!tbody) return;
       tbody.innerHTML = '';
-      
+
       const selFilter = document.getElementById('filterSiswaKelas');
       if (selFilter) {
         const curVal = selFilter.value;
@@ -838,7 +831,7 @@
       }
 
       if(globalSiswaData.length <= 1) { tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 text-slate-500">Kosong</td></tr>'; return; }
-      
+
       let count = 0;
       for(let i=1; i<globalSiswaData.length; i++) {
         const r = globalSiswaData[i]; if(!r) continue;
@@ -924,10 +917,10 @@
         document.getElementById('formSiswaKet').value,
         document.getElementById('formSiswaPass').value
       ];
-      
+
       if(!rowData[0] || !rowData[1] || !rowData[2]) return alert("NIS, Nama, dan Kelas wajib diisi!");
       const idx = document.getElementById('formSiswaIndex').value;
-      
+
       let action = idx === "-1" ? 'addDataRow' : 'updateDataRow';
       fetchAPI(action, { sheetName: 'Siswa', rowData: rowData, dataIndex: idx === "-1" ? null : idx }).then(res => {
         alert(res ? res.message : 'Berhasil menyimpan data!');
@@ -944,8 +937,8 @@
     }
 
     function refreshSiswaData() {
-      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => { 
-        globalSiswaData = data || []; renderDataSiswa(); 
+      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => {
+        globalSiswaData = data || []; renderDataSiswa();
       });
     }
   </script>
@@ -970,7 +963,7 @@
           <button onclick="showSection('hariLiburView'); renderHariLiburTable();" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-rose-600 border border-rose-100"><i class="fa-solid fa-calendar-xmark text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide text-center">Hari Libur</span></button>
           <button onclick="showSection('pengaturanSekolahView');" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-slate-600 border border-slate-100"><i class="fa-solid fa-gear text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Profil Sekolah</span></button>
           <button onclick="showSection('dataSiswaView'); renderDataSiswa();" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-blue-600 border border-blue-100"><i class="fa-solid fa-users text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Data Siswa</span></button>
-          
+
           <button onclick="showSection('studentProfileView'); renderStudentProfile();" class="siswa-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-teal-600 border border-teal-100"><i class="fa-solid fa-id-card text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Kartu Profil</span></button>
           <button onclick="showSection('studentEditProfileView'); loadStudentSelfData();" class="siswa-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-indigo-600 border border-indigo-100"><i class="fa-solid fa-user-gear text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Input Siswa</span></button>
         </div>
@@ -992,7 +985,7 @@
               <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl text-center"><span class="text-xs font-semibold uppercase text-rose-600">Alfa</span><p id="statAlfa" class="text-2xl font-bold text-rose-700">0</p></div>
             </div>
           </div>
-          
+
           <div class="bg-white p-5 rounded-xl shadow border">
             <h2 class="font-bold text-lg mb-4 border-b pb-3"><i class="fa-solid fa-calendar-days text-indigo-600"></i> Jadwal Mengajar Guru</h2>
             <div class="overflow-x-auto max-h-52">
@@ -1065,7 +1058,7 @@
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-5 rounded-xl shadow border max-w-2xl">
           <h2 class="font-bold text-lg mb-4 text-rose-600"><i class="fa-solid fa-calendar-xmark"></i> Pengaturan Hari Libur Sekolah</h2>
-          
+
           <div class="bg-slate-50 p-4 rounded-lg border mb-5">
             <label class="block text-xs font-bold mb-2 text-slate-700 uppercase">Libur Rutin Mingguan (Ceklis yang Berlaku):</label>
             <div class="flex gap-6 items-center">
@@ -1207,7 +1200,7 @@
                 </button>
              </div>
           </div>
-          
+
           <div class="overflow-x-auto border rounded-lg">
             <table class="w-full text-sm text-left whitespace-nowrap">
               <thead class="bg-slate-100">
@@ -1226,27 +1219,27 @@
           <h2 id="modalFormSiswaTitle" class="font-bold text-lg mb-4 text-blue-700 flex items-center gap-2">
             <i class="fa-solid fa-user-pen"></i> Form Data Siswa
           </h2>
-          
+
           <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
              <div><label class="block text-xs font-bold mb-1">NIS</label><input type="text" id="formSiswaNis" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">Nama Lengkap</label><input type="text" id="formSiswaNama" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">Kelas</label><select id="formSiswaKelas" class="border p-2 rounded w-full text-sm"></select></div>
-             
+
              <div><label class="block text-xs font-bold mb-1">Jenis Kelamin</label>
                   <select id="formSiswaJK" class="border p-2 rounded w-full text-sm"><option value="L">Laki-laki (L)</option><option value="P">Perempuan (P)</option></select></div>
              <div><label class="block text-xs font-bold mb-1">Tanggal Lahir</label><input type="date" id="formSiswaTglLahir" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">No HP / WA</label><input type="text" id="formSiswaHP" class="border p-2 rounded w-full text-sm"></div>
-             
+
              <div><label class="block text-xs font-bold mb-1">Ekstrakurikuler</label><input type="text" id="formSiswaEkskul" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">Nama Ortu/Wali</label><input type="text" id="formSiswaOrtu" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">No HP Ortu</label><input type="text" id="formSiswaHPOrtu" class="border p-2 rounded w-full text-sm"></div>
-             
+
              <div class="md:col-span-2"><label class="block text-xs font-bold mb-1">Alamat Rumah</label><input type="text" id="formSiswaAlamat" class="border p-2 rounded w-full text-sm"></div>
              <div><label class="block text-xs font-bold mb-1">Password</label><input type="text" id="formSiswaPass" value="123456" class="border p-2 rounded w-full text-sm"></div>
-             
+
              <div class="md:col-span-3"><label class="block text-xs font-bold mb-1">Keterangan Khusus</label><input type="text" id="formSiswaKet" class="border p-2 rounded w-full text-sm"></div>
           </div>
-          
+
           <input type="hidden" id="formSiswaIndex" value="-1">
           <div class="flex justify-end gap-2 border-t pt-4">
              <button onclick="closeFormSiswaModal()" class="px-4 py-2 border rounded-lg text-slate-600 font-semibold text-sm hover:bg-slate-50">Batal</button>
