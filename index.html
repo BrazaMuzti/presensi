@@ -30,7 +30,7 @@
     // KONFIGURASI API & STATE GLOBAL
     // ==============================================
     // GANTI URL INI DENGAN URL DEPLOYMENT APPS SCRIPT ANDA
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzgFQWgdpSaVGbeC5eDAFySu_DYksHqg_gSA6GE4OqFV2lZZU_UqyWUeh7HVHafHfD0/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwishzicg3kzEGFGoL4sURQMKURUzK6cMnqPdA_XqqwDgJuXls1Zr4wwDN6fvkUpnZ/exec";
 
     let currentUser = {};
     let globalSiswaData = [];
@@ -470,6 +470,61 @@
       fetchAPI('saveNilaiBatch', { nilaiList: dataToSave }).then(res => { if(res && res.success) { alert(`Berhasil menyimpan data!`); refreshDataNilai(); } else alert("Gagal menyimpan!"); });
     }
 
+// 2. Fungsi Meringkas "Tugas Yg Belum" Otomatis
+function formatSingkatanTugas(teksInput) {
+  // Mengubah teks panjang menjadi singkatan sebelum ditampilkan/disimpan
+  let teksPendek = teksInput
+    .replace(/Tugas 1/gi, "T1")
+    .replace(/Tugas 2/gi, "T2")
+    .replace(/Praktek/gi, "P")
+    .replace(/Ulangan Harian/gi, "UH")
+    .replace(/Tugas Mandiri/gi, "TM");
+    
+  return teksPendek;
+}
+
+// 6. Peringatan (Warning) Sebelum Menambah/Menghapus Data (Menggunakan SweetAlert2)
+function konfirmasiAksiSiswa(aksi) {
+  // Pastikan Anda sudah melampirkan library CDN SweetAlert2 di tag <head>
+  Swal.fire({
+    title: 'Apakah Anda yakin?',
+    text: `Anda akan melakukan aksi: ${aksi} pada data ini.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Ya, Lanjutkan!',
+    cancelButtonText: 'Batal'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Panggil fungsi submit ke Code.gs
+      // contoh: google.script.run.withSuccessHandler(sukses).simpanDataSiswa(dataForm);
+      Swal.fire('Berhasil!', 'Aksi telah dieksekusi.', 'success');
+    }
+  });
+}
+
+// 7. Kunci Input Form Saat Login Sebagai Siswa (Read-Only)
+function setFormBerdasarkanRole(role) {
+  if (role === 'siswa') {
+    // Siswa tidak bisa mengubah NIS, Nama, Kelas, dan Jenis Kelamin
+    document.getElementById('nis').readOnly = true;
+    document.getElementById('namaLengkap').readOnly = true;
+    
+    // Untuk elemen dropdown/select, gunakan disabled
+    document.getElementById('kelas').disabled = true;
+    document.getElementById('jenisKelamin').disabled = true;
+    
+    // Elemen lain (Alamat, No HP, Ekskul) dibiarkan terbuka (bisa diedit)
+  } else if (role === 'admin') {
+    // Admin bisa mengubah semuanya
+    document.getElementById('nis').readOnly = false;
+    document.getElementById('namaLengkap').readOnly = false;
+    document.getElementById('kelas').disabled = false;
+    document.getElementById('jenisKelamin').disabled = false;
+  }
+}    
+    
     // ==============================================
     // DATA NILAI (Tugas 4)
     // ==============================================
@@ -701,6 +756,14 @@
             <h2 class="font-bold text-base mb-3 text-rose-600"><i class="fa-solid fa-calendar-days"></i> Master Jadwal</h2>
             <button onclick="addJadwalItem()" class="w-full bg-rose-600 text-white py-1.5 rounded text-sm font-bold mb-3"><i class="fa-solid fa-plus"></i> Tambah Jadwal</button>
             <div class="max-h-64 overflow-y-auto"><table class="w-full text-xs text-left"><thead class="bg-slate-100"><tr><th class="p-2">Waktu</th><th class="p-2">Kelas</th><th class="p-2">Mapel</th><th class="p-2 text-center">Hapus</th></tr></thead><tbody id="jadwalListBody"></tbody></table></div>
+<!-- Form Input untuk memilih warna jadwal pelajaran -->
+<label for="warnaMapel">Pilih Warna Mapel & Kelas:</label>
+<input type="color" id="warnaMapel" name="warnaMapel" value="#ff0000">
+
+<!-- Saat ditampilkan di tabel jadwal -->
+<td style="background-color: #ff0000; color: white;">
+  Matematika - XII RPL 1
+</td>
           </div>
         </div>
       </div>
