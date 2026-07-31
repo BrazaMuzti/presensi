@@ -19,7 +19,15 @@
     .table-rekap th, .table-rekap td { border: 1px solid #e2e8f0; padding: 4px; text-align: center; }
     .table-rekap th { background-color: #f8fafc; font-size: 11px; }
     .table-rekap td { font-size: 11px; }
-    .holiday-col { background-color: #fee2e2 !important; color: #ef4444; font-weight: bold;}
+    .holiday-col { background-color: #fee2e2 !important; color: #ef4444 !important; font-weight: bold; }
+
+    /* Sticky Table for Input Nilai */
+    .sticky-col-1 { position: sticky; left: 0; z-index: 10; background-color: #ffffff; }
+    .sticky-col-2 { position: sticky; left: 36px; z-index: 10; background-color: #ffffff; }
+    .sticky-col-3 { position: sticky; left: 115px; z-index: 10; background-color: #ffffff; }
+    .sticky-header-col-1 { position: sticky; top: 0; left: 0; z-index: 30; background-color: #f8fafc; }
+    .sticky-header-col-2 { position: sticky; top: 0; left: 36px; z-index: 30; background-color: #f8fafc; }
+    .sticky-header-col-3 { position: sticky; top: 0; left: 115px; z-index: 30; background-color: #f8fafc; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans h-screen flex flex-col">
@@ -29,8 +37,7 @@
     // ==============================================
     // KONFIGURASI API & STATE GLOBAL
     // ==============================================
-    // GANTI URL INI DENGAN URL DEPLOYMENT APPS SCRIPT ANDA
-    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxwishzicg3kzEGFGoL4sURQMKURUzK6cMnqPdA_XqqwDgJuXls1Zr4wwDN6fvkUpnZ/exec";
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycITkI_eyFmxXyOeJKaURmOLTUzkTnOe1VkTGbD9GJt-6-UABwGTBLab0eXQdE2PO1/exec";
 
     let currentUser = {};
     let globalSiswaData = [];
@@ -38,14 +45,19 @@
     let globalMapelData = [];
     let globalEskulData = [];
     let globalKelasData = [];
-    let globalJadwalDashboard = []; // Untuk Dashboard Jadwal
+    let globalJadwalDashboard = [];
     let globalPresensiData = [];
     let globalNilaiData = [];
-    let globalHariLiburData = []; // Untuk Hari Libur
+    let globalHariLiburData = [];
     let html5QrcodeScanner = null;
     let isScanCooldown = false;
 
-    // Default Profil Sekolah (Dengan Logo Ke-2 Jabar)
+    // Hari Libur Rutin State
+    let liburRutin = {
+      sabtu: localStorage.getItem('liburSabtu') === 'true',
+      minggu: localStorage.getItem('liburMinggu') !== 'false' // default true
+    };
+
     let schoolProfile = {
       nama: "SMK Negeri 2 Banjar",
       logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_Tut_Wuri_Handayani.png/120px-Logo_Tut_Wuri_Handayani.png",
@@ -60,6 +72,24 @@
         });
         return await response.json();
       } catch (error) { return null; }
+    }
+
+    function applySchoolProfile() {
+      document.getElementById('navSchoolName').innerText = schoolProfile.nama;
+      const logo1 = document.getElementById('lapSchoolLogo');
+      const logo2 = document.getElementById('lapSchoolLogo2');
+      const logo3 = document.getElementById('dataNilaiLogo');
+      const logo4 = document.getElementById('dataNilaiLogo2');
+      const logoLogin = document.getElementById('loginSchoolLogo');
+      
+      document.querySelectorAll('.lapSchoolNameClass').forEach(e => e.innerText = schoolProfile.nama);
+      document.querySelectorAll('.lapSchoolAlamatClass').forEach(e => e.innerText = schoolProfile.alamat);
+      
+      if(logo1 && schoolProfile.logo) logo1.src = schoolProfile.logo;
+      if(logo2 && schoolProfile.logo2) logo2.src = schoolProfile.logo2;
+      if(logo3 && schoolProfile.logo) logo3.src = schoolProfile.logo;
+      if(logo4 && schoolProfile.logo2) logo4.src = schoolProfile.logo2;
+      if(logoLogin && schoolProfile.logo) logoLogin.src = schoolProfile.logo;
     }
 
     function showSection(sectionId) {
@@ -77,22 +107,6 @@
       document.getElementById('realtimeDate').innerText = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
       document.getElementById('realtimeClock').innerText = now.toLocaleTimeString('id-ID');
     }, 1000);
-
-    function applySchoolProfile() {
-      document.getElementById('navSchoolName').innerText = schoolProfile.nama;
-      const logo1 = document.getElementById('lapSchoolLogo');
-      const logo2 = document.getElementById('lapSchoolLogo2');
-      const logo3 = document.getElementById('dataNilaiLogo');
-      const logo4 = document.getElementById('dataNilaiLogo2');
-      
-      document.querySelectorAll('.lapSchoolNameClass').forEach(e => e.innerText = schoolProfile.nama);
-      document.querySelectorAll('.lapSchoolAlamatClass').forEach(e => e.innerText = schoolProfile.alamat);
-      
-      if(logo1 && schoolProfile.logo) logo1.src = schoolProfile.logo;
-      if(logo2 && schoolProfile.logo2) logo2.src = schoolProfile.logo2;
-      if(logo3 && schoolProfile.logo) logo3.src = schoolProfile.logo;
-      if(logo4 && schoolProfile.logo2) logo4.src = schoolProfile.logo2;
-    }
 
     function handleLogin(e) {
       e.preventDefault();
@@ -114,13 +128,20 @@
           applySchoolProfile();
           let fTgl = document.getElementById('statFilterTanggal');
           if(fTgl) { fTgl.innerHTML='<option value="">Semua Hari</option>'; for(let i=1;i<=31;i++){fTgl.innerHTML+=`<option value="${i}">Tanggal ${i}</option>`;} }
+          
+          // Set checkbox state hari libur
+          if(document.getElementById('chkLiburSabtu')) document.getElementById('chkLiburSabtu').checked = liburRutin.sabtu;
+          if(document.getElementById('chkLiburMinggu')) document.getElementById('chkLiburMinggu').checked = liburRutin.minggu;
+
           preloadDataAll();
 
           if(res.role === 'siswa') {
             document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'none');
-            showSection('studentProfileView'); renderStudentProfile();
+            document.querySelectorAll('.siswa-only').forEach(b => b.style.display = 'flex');
+            showSection('studentProfileView'); renderStudentProfile(); loadStudentSelfData();
           } else {
             document.querySelectorAll('.admin-only').forEach(b => b.style.display = 'flex');
+            document.querySelectorAll('.siswa-only').forEach(b => b.style.display = 'none');
             showSection('dashboardView');
           }
         } else {
@@ -148,7 +169,7 @@
         populateKelasDropdowns(); populateMapelEskulDropdowns(); renderKelolaMasterData(); renderJadwalDashboard();
       });
       fetchAPI('getSheetData', { sheetName: 'HariLibur' }).then(data => { globalHariLiburData = data||[]; renderHariLiburTable(); });
-      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => { globalSiswaData = data || []; populateKelasDropdowns(); });
+      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => { globalSiswaData = data || []; populateKelasDropdowns(); if(currentUser.role==='siswa') loadStudentSelfData(); });
       fetchAPI('getSheetData', { sheetName: 'Guru' }).then(data => { globalGuruData = data || []; });
       fetchAPI('getSheetData', { sheetName: 'Presensi' }).then(data => { globalPresensiData = data || []; updateStatistikUI(); renderTodayPresensiTable(); if(currentUser.role==='siswa') renderSiswaKehadiran(); });
       fetchAPI('getSheetData', { sheetName: 'Nilai' }).then(data => { globalNilaiData = data || []; if(currentUser.role==='siswa') renderSiswaNilai(); });
@@ -158,10 +179,10 @@
       const kelasSet = new Set(globalKelasData);
       for(let i=1; i<globalSiswaData.length; i++) { if(globalSiswaData[i][2]) kelasSet.add(String(globalSiswaData[i][2]).trim()); }
       const kelasArray = Array.from(kelasSet).filter(Boolean).sort();
-      ['statFilterKelas', 'lapFilterKelas', 'nilaiInputKelas', 'nilaiDataKelas', 'manualKelas'].forEach(id => {
+      ['statFilterKelas', 'lapFilterKelas', 'nilaiInputKelas', 'nilaiDataKelas', 'manualKelas', 'filterSiswaKelas'].forEach(id => {
         const el = document.getElementById(id); if(!el) return;
         const currentVal = el.value;
-        el.innerHTML = id.includes('Filter') || id.includes('Data') ? '<option value="">Semua Kelas</option>' : '<option value="">-- Pilih Kelas --</option>';
+        el.innerHTML = id.includes('Filter') || id.includes('Data') || id.includes('filter') ? '<option value="">Semua Kelas</option>' : '<option value="">-- Pilih Kelas --</option>';
         kelasArray.forEach(k => el.innerHTML += `<option value="${k}">${k}</option>`);
         if(currentVal) el.value = currentVal;
       });
@@ -225,9 +246,20 @@
       applySchoolProfile(); alert("Profil Sekolah berhasil diperbarui"); showSection('dashboardView');
     }
 
+    function saveLiburRutin() {
+      liburRutin.sabtu = document.getElementById('chkLiburSabtu').checked;
+      liburRutin.minggu = document.getElementById('chkLiburMinggu').checked;
+      localStorage.setItem('liburSabtu', liburRutin.sabtu);
+      localStorage.setItem('liburMinggu', liburRutin.minggu);
+      if (document.getElementById('laporanView') && !document.getElementById('laporanView').classList.contains('hidden')) {
+        renderLaporanTable();
+      }
+      if (currentUser.role === 'siswa') renderSiswaKehadiran();
+    }
+
     function renderHariLiburTable() {
       const tbody = document.getElementById('tbodyHariLibur'); if(!tbody) return; tbody.innerHTML='';
-      if(globalHariLiburData.length <= 1) { tbody.innerHTML = '<tr><td colspan="3" class="text-center p-3 text-slate-500">Belum ada hari libur</td></tr>'; return; }
+      if(globalHariLiburData.length <= 1) { tbody.innerHTML = '<tr><td colspan="3" class="text-center p-3 text-slate-500">Belum ada hari libur custom</td></tr>'; return; }
       for(let i=1; i<globalHariLiburData.length; i++) {
         tbody.innerHTML += `<tr><td class="p-2 border">${globalHariLiburData[i][0]}</td><td class="p-2 border">${globalHariLiburData[i][1]}</td>
         <td class="p-2 border text-center"><button onclick="hapusHariLibur(${i})" class="text-red-500 font-bold"><i class="fa-solid fa-trash"></i></button></td></tr>`;
@@ -288,7 +320,7 @@
       if(!mapel) return alert("Pilih Mata Pelajaran / Ekstrakurikuler terlebih dahulu!");
 
       let targetList = [];
-      if(nis === 'ALL') { // Tugas 2: Masal Hadir
+      if(nis === 'ALL') {
         for(let i=1; i<globalSiswaData.length; i++) {
           if(globalSiswaData[i][2] === kelas) targetList.push({ nis: globalSiswaData[i][0], nama: globalSiswaData[i][1], kelas: kelas, status: status, metode: 'Manual', mapel: mapel });
         }
@@ -302,7 +334,7 @@
       fetchAPI('savePresensiBatch', { presensiList: targetList }).then(res => {
         if(res && res.success) {
            logScan(`Berhasil menyimpan ${targetList.length} data presensi (${status}) - ${mapel}`, "success");
-           fetchAPI('getSheetData', { sheetName: 'Presensi' }).then(d => { globalPresensiData = d||[]; renderTodayPresensiTable(); updateStatistikUI(); }); // Refresh lokal agar sinkron
+           fetchAPI('getSheetData', { sheetName: 'Presensi' }).then(d => { globalPresensiData = d||[]; renderTodayPresensiTable(); updateStatistikUI(); });
         } else logScan(`Gagal menyimpan data!`, "error");
       });
     }
@@ -334,7 +366,7 @@
     }
 
     // ==============================================
-    // KELOLA MASTER DATA (MAPEL, ESKUL, KELAS, JADWAL)
+    // KELOLA MASTER DATA
     // ==============================================
     function renderKelolaMasterData() {
       const renderRows = (arr, type) => arr.map((x,i) => `<tr class="border-b"><td class="p-2 text-center">${i+1}</td><td class="p-2 font-semibold">${x}</td><td class="p-2 text-center"><button onclick="editMasterItem('${type}',${i})" class="text-blue-500 mx-1" title="Edit"><i class="fa-solid fa-edit"></i></button><button onclick="deleteMasterItem('${type}',${i})" class="text-red-500 mx-1" title="Hapus"><i class="fa-solid fa-trash"></i></button></td></tr>`).join('') || '<tr><td colspan="3" class="text-center p-2 text-slate-400">Kosong</td></tr>';
@@ -348,7 +380,6 @@
       }
     }
 
-    // Tugas 6: Fungsi Edit & Hapus Master Data
     function addMasterItem(type) {
       let inputId = type==='Mapel'?'newMapelInput':type==='Ekstrakurikuler'?'newEskulInput':'newKelasInput';
       let val = document.getElementById(inputId).value.trim(); if(!val) return alert("Kosong!");
@@ -388,9 +419,8 @@
     }
 
     // ==============================================
-    // INPUT NILAI (DINAMIS)
+    // INPUT NILAI (POIN 1: STICKY HEADER & LAYER NAMA)
     // ==============================================
-    // Tugas 3: Refresh Data
     function refreshDataNilai() { fetchAPI('getSheetData', { sheetName: 'Nilai' }).then(d => { globalNilaiData = d||[]; loadSiswaForNilai(); alert("Data Nilai Diperbarui!"); }); }
 
     function loadSiswaForNilai() {
@@ -399,7 +429,6 @@
 
       if(!kelas || !mapel) { thead.innerHTML=''; tbody.innerHTML='<tr><td colspan="15" class="text-center p-4">Pilih Kelas & Mapel terlebih dahulu</td></tr>'; return; }
 
-      // Tugas 3: Mengambil jenis dinamis berdasarkan data yang ada
       let dynamicJenisSet = new Set(['Tugas 1', 'Tugas 2', 'Tugas 3', 'Praktek', 'ASAS', 'ASAJ']); 
       let existingGrades = {}; let ketGrades = {};
       
@@ -414,9 +443,12 @@
       }
 
       let activeJenisArr = Array.from(dynamicJenisSet);
-      let thHtml = `<tr class="bg-slate-100 text-xs font-bold border-b"><th class="p-2 w-10 text-center">No</th><th class="p-2 w-24 text-left">NIS</th><th class="p-2 text-left min-w-[150px]">Nama</th>`;
-      activeJenisArr.forEach(j => thHtml += `<th class="p-2 text-center w-20">${j}</th>`);
-      thHtml += `<th class="p-2 text-center w-16 bg-emerald-100">Rata2</th><th class="p-2 text-left w-32 bg-rose-50 text-rose-800">Tugas Yg Belum</th><th class="p-2 text-left w-40">Keterangan</th></tr>`;
+      let thHtml = `<tr class="bg-slate-100 text-xs font-bold border-b sticky top-0 z-20">
+        <th class="p-2 w-10 text-center sticky-header-col-1 border-r">No</th>
+        <th class="p-2 w-20 text-left sticky-header-col-2 border-r">NIS</th>
+        <th class="p-2 text-left min-w-[150px] sticky-header-col-3 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">Nama</th>`;
+      activeJenisArr.forEach(j => thHtml += `<th class="p-2 text-center w-20 border-r">${j}</th>`);
+      thHtml += `<th class="p-2 text-center w-16 bg-emerald-100 border-r">Rata2</th><th class="p-2 text-left w-32 bg-rose-50 text-rose-800 border-r">Tugas Yg Belum</th><th class="p-2 text-left w-40">Keterangan</th></tr>`;
       thead.innerHTML = thHtml; tbody.innerHTML = '';
       
       let idx=1;
@@ -424,29 +456,46 @@
         if(globalSiswaData[i][2] === kelas) {
           const nis = String(globalSiswaData[i][0]).trim(); const nama = globalSiswaData[i][1];
           const stGrades = existingGrades[nis] || {};
-          let trHtml = `<tr class="border-b text-sm student-nilai-row" data-nis="${nis}" data-nama="${nama}"><td class="p-2 text-center">${idx++}</td><td class="p-2 font-mono">${nis}</td><td class="p-2 font-bold truncate">${nama}</td>`;
+          let trHtml = `<tr class="border-b text-sm student-nilai-row" data-nis="${nis}" data-nama="${nama}">
+            <td class="p-2 text-center sticky-col-1 border-r">${idx++}</td>
+            <td class="p-2 font-mono sticky-col-2 border-r">${nis}</td>
+            <td class="p-2 font-bold truncate sticky-col-3 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">${nama}</td>`;
           let sum=0, count=0; let missing = [];
           
           activeJenisArr.forEach(j => {
             const extVal = stGrades[j] !== undefined ? stGrades[j] : '';
-            if(extVal !== '') { sum+=parseFloat(extVal); count++; } else { missing.push(j); }
-            trHtml += `<td class="p-1 text-center"><input type="number" min="0" max="100" class="w-16 border p-1 text-center rounded text-xs nilai-cell" data-jenis="${j}" value="${extVal}" oninput="calcStat(this)"></td>`;
+            if(extVal !== '') { 
+               sum+=parseFloat(extVal); count++; 
+            } else { 
+               let singkatan = j.replace(/Tugas\s*/i, 'T').replace(/Praktek/i, 'P');
+               missing.push(singkatan); 
+            }
+            trHtml += `<td class="p-1 text-center border-r"><input type="number" min="0" max="100" class="w-16 border p-1 text-center rounded text-xs nilai-cell" data-jenis="${j}" value="${extVal}" oninput="calcStat(this)"></td>`;
           });
           
           let avg = count > 0 ? (sum/count).toFixed(1) : '0';
           let ketVal = ketGrades[nis] || '';
           
-          trHtml += `<td class="p-2 text-center font-bold bg-emerald-50 row-avg">${avg}</td><td class="p-2 text-xs text-rose-600 font-medium missing-cell">${missing.join(', ')}</td><td class="p-1"><input type="text" class="w-full border p-1 text-xs rounded ket-cell" value="${ketVal}" placeholder="Ket..."></td></tr>`;
+          trHtml += `<td class="p-2 text-center font-bold bg-emerald-50 row-avg border-r">${avg}</td><td class="p-2 text-xs text-rose-600 font-medium missing-cell border-r">${missing.join(', ')}</td><td class="p-1"><input type="text" class="w-full border p-1 text-xs rounded ket-cell" value="${ketVal}" placeholder="Ket..."></td></tr>`;
           tbody.innerHTML += trHtml;
         }
       }
-      if(idx===1) tbody.innerHTML = '<tr><td colspan="15" class="text-center p-4">Tidak ada siswa</td></tr>';
+      if(idx===1) tbody.innerHTML = '<tr><td colspan="15" class="text-center p-4">Tidak ada siswa di kelas ini</td></tr>';
     }
 
     function calcStat(inp) {
       const tr = inp.closest('tr'); const inputs = tr.querySelectorAll('.nilai-cell');
       let sum=0, count=0; let missing=[];
-      inputs.forEach(i => { let v=parseFloat(i.value); if(!isNaN(v)) { sum+=v; count++; } else { missing.push(i.getAttribute('data-jenis')); } });
+      inputs.forEach(i => { 
+        let v=parseFloat(i.value); 
+        if(!isNaN(v)) { 
+           sum+=v; count++; 
+        } else { 
+           let jName = i.getAttribute('data-jenis');
+           let singkatan = jName.replace(/Tugas\s*/i, 'T').replace(/Praktek/i, 'P');
+           missing.push(singkatan); 
+        } 
+      });
       tr.querySelector('.row-avg').innerText = count>0?(sum/count).toFixed(1):'0';
       tr.querySelector('.missing-cell').innerText = missing.join(', ');
     }
@@ -470,63 +519,8 @@
       fetchAPI('saveNilaiBatch', { nilaiList: dataToSave }).then(res => { if(res && res.success) { alert(`Berhasil menyimpan data!`); refreshDataNilai(); } else alert("Gagal menyimpan!"); });
     }
 
-// 2. Fungsi Meringkas "Tugas Yg Belum" Otomatis
-function formatSingkatanTugas(teksInput) {
-  // Mengubah teks panjang menjadi singkatan sebelum ditampilkan/disimpan
-  let teksPendek = teksInput
-    .replace(/Tugas 1/gi, "T1")
-    .replace(/Tugas 2/gi, "T2")
-    .replace(/Praktek/gi, "P")
-    .replace(/Ulangan Harian/gi, "UH")
-    .replace(/Tugas Mandiri/gi, "TM");
-    
-  return teksPendek;
-}
-
-// 6. Peringatan (Warning) Sebelum Menambah/Menghapus Data (Menggunakan SweetAlert2)
-function konfirmasiAksiSiswa(aksi) {
-  // Pastikan Anda sudah melampirkan library CDN SweetAlert2 di tag <head>
-  Swal.fire({
-    title: 'Apakah Anda yakin?',
-    text: `Anda akan melakukan aksi: ${aksi} pada data ini.`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Ya, Lanjutkan!',
-    cancelButtonText: 'Batal'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // Panggil fungsi submit ke Code.gs
-      // contoh: google.script.run.withSuccessHandler(sukses).simpanDataSiswa(dataForm);
-      Swal.fire('Berhasil!', 'Aksi telah dieksekusi.', 'success');
-    }
-  });
-}
-
-// 7. Kunci Input Form Saat Login Sebagai Siswa (Read-Only)
-function setFormBerdasarkanRole(role) {
-  if (role === 'siswa') {
-    // Siswa tidak bisa mengubah NIS, Nama, Kelas, dan Jenis Kelamin
-    document.getElementById('nis').readOnly = true;
-    document.getElementById('namaLengkap').readOnly = true;
-    
-    // Untuk elemen dropdown/select, gunakan disabled
-    document.getElementById('kelas').disabled = true;
-    document.getElementById('jenisKelamin').disabled = true;
-    
-    // Elemen lain (Alamat, No HP, Ekskul) dibiarkan terbuka (bisa diedit)
-  } else if (role === 'admin') {
-    // Admin bisa mengubah semuanya
-    document.getElementById('nis').readOnly = false;
-    document.getElementById('namaLengkap').readOnly = false;
-    document.getElementById('kelas').disabled = false;
-    document.getElementById('jenisKelamin').disabled = false;
-  }
-}    
-    
     // ==============================================
-    // DATA NILAI (Tugas 4)
+    // DATA NILAI
     // ==============================================
     function renderDataNilai() {
       const semester = document.getElementById('nilaiDataSemester').value; const mapel = document.getElementById('nilaiDataMapel').value; const kelas = document.getElementById('nilaiDataKelas').value;
@@ -564,7 +558,7 @@ function setFormBerdasarkanRole(role) {
     }
 
     // ==============================================
-    // LAPORAN PRESENSI & HARI LIBUR
+    // LAPORAN PRESENSI (POIN 4 & 5: DETEKSI LIBUR)
     // ==============================================
     function renderLaporanTable() {
       const tbody = document.getElementById('tbodyLaporan');
@@ -588,9 +582,8 @@ function setFormBerdasarkanRole(role) {
         }
       }
 
-      // Tugas 5: Deteksi Hari Libur
       let liburArr = [];
-      for(let i=1; i<globalHariLiburData.length; i++) { liburArr.push(globalHariLiburData[i][0]); }
+      for(let i=1; i<globalHariLiburData.length; i++) { if(globalHariLiburData[i] && globalHariLiburData[i][0]) liburArr.push(globalHariLiburData[i][0]); }
 
       tbody.innerHTML = '';
       listSiswa.forEach((s, idx) => {
@@ -598,11 +591,13 @@ function setFormBerdasarkanRole(role) {
         let rec = rekap[s.nis];
 
         for(let d=1; d<=31; d++) {
-          let dateObj = new Date(year, month - 1, d); let isSunday = dateObj.getDay() === 0;
+          let dateObj = new Date(year, month - 1, d);
+          let isSunday = dateObj.getDay() === 0 && liburRutin.minggu;
+          let isSaturday = dateObj.getDay() === 6 && liburRutin.sabtu;
           let checkStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
           let isHariLibur = liburArr.includes(checkStr);
 
-          if(isSunday || isHariLibur) {
+          if(isSunday || isSaturday || isHariLibur) {
             tr += `<td class="holiday-col">L</td>`;
           } else {
             let st = rec.days[d];
@@ -623,33 +618,335 @@ function setFormBerdasarkanRole(role) {
     }
 
     // ==============================================
-    // STUDENT VIEW
+    // STUDENT VIEW (POIN 3 BUKAN / POIN 6 & 7): MODIFIKASI DASHBOARD SISWA
     // ==============================================
     function renderStudentProfile() {
       document.getElementById('profileName').innerText = currentUser.nama; document.getElementById('profileNIS').innerText = currentUser.NIS; document.getElementById('profileKelas').innerText = currentUser.kelas;
       const qrC = document.getElementById("qrcodeContainer"); qrC.innerHTML = ""; new QRCode(qrC, { text: String(currentUser.NIS), width: 140, height: 140 });
       renderSiswaKehadiran(); renderSiswaNilai();
     }
+
+    // Riwayat Kehadiran Ku versi Matriks seperti Laporan Presensi
     function renderSiswaKehadiran() {
-      const tb = document.getElementById('tbodySiswaKehadiran'); if(!tb) return; tb.innerHTML='';
-      const mF = document.getElementById('siswaFilterMapel').value; let c=0;
-      for(let i=globalPresensiData.length-1; i>=1; i--) {
-        const r = globalPresensiData[i];
-        if(String(r[1]) === String(currentUser.NIS)) {
-          if(mF && r[7] !== mF) continue;
-          tb.innerHTML += `<tr class="border-b text-sm"><td class="p-2">${r[0]}</td><td class="p-2">${r[7]||'-'}</td><td class="p-2 font-bold ${r[4].toLowerCase()==='hadir'?'text-emerald-600':'text-amber-600'}">${r[4]}</td></tr>`; c++;
+      const tb = document.getElementById('tbodySiswaKehadiran');
+      const thead = document.getElementById('theadSiswaKehadiran');
+      if(!tb) return;
+
+      let bln = document.getElementById('siswaLapBulan')?.value;
+      if(!bln) {
+        const now = new Date();
+        bln = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+        if(document.getElementById('siswaLapBulan')) document.getElementById('siswaLapBulan').value = bln;
+      }
+
+      const [year, month] = bln.split('-');
+      const mF = document.getElementById('siswaFilterMapel')?.value || '';
+
+      let liburArr = [];
+      for(let i=1; i<globalHariLiburData.length; i++) { if(globalHariLiburData[i] && globalHariLiburData[i][0]) liburArr.push(globalHariLiburData[i][0]); }
+
+      let daysData = {}; let total = { H:0, S:0, I:0, A:0 };
+
+      for(let i=1; i<globalPresensiData.length; i++) {
+        const r = globalPresensiData[i]; if(!r || !r[0]) continue;
+        const tFull = r[0]; const nis = String(r[1]).trim(); const status = (r[4]||'').toUpperCase(); const mapel = r[7]||'';
+        
+        if(nis === String(currentUser.NIS).trim()) {
+          if(mF && mapel !== mF) continue;
+          if(tFull.startsWith(bln)) {
+            let day = parseInt(tFull.split(' ')[0].split('-')[2], 10);
+            let kode = status==='HADIR'?'H':status==='SAKIT'?'S':status==='IZIN'?'I':status==='ALFA'?'A':'-';
+            if(!daysData[day] || daysData[day] === 'A') daysData[day] = kode;
+          }
         }
-        if(c>=15) break;
       }
-      if(c===0) tb.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">Belum ada riwayat</td></tr>';
+
+      if(thead) {
+        let thHtml = `<tr class="bg-slate-100 text-xs font-bold border-b"><th class="p-2 border">Bulan/Tgl</th>`;
+        for(let d=1; d<=31; d++) thHtml += `<th class="p-1 border text-center w-6">${d}</th>`;
+        thHtml += `<th class="p-1 border text-center bg-emerald-100">H</th><th class="p-1 border text-center bg-amber-100">S</th><th class="p-1 border text-center bg-blue-100">I</th><th class="p-1 border text-center bg-red-100">A</th></tr>`;
+        thead.innerHTML = thHtml;
+      }
+
+      let tr = `<tr class="border-b text-xs text-center"><td class="p-2 font-bold border">${bln}</td>`;
+      for(let d=1; d<=31; d++) {
+        let dateObj = new Date(year, month - 1, d);
+        let isSunday = dateObj.getDay() === 0 && liburRutin.minggu;
+        let isSaturday = dateObj.getDay() === 6 && liburRutin.sabtu;
+        let checkStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        let isHariLibur = liburArr.includes(checkStr);
+
+        if(isSunday || isSaturday || isHariLibur) {
+          tr += `<td class="holiday-col border">L</td>`;
+        } else {
+          let st = daysData[d];
+          if(st) {
+            total[st]++;
+            let cC = st==='H'?'text-emerald-600':st==='S'?'text-amber-600':st==='I'?'text-blue-600':'text-red-600';
+            tr += `<td class="${cC} font-bold border">${st}</td>`;
+          } else {
+            tr += `<td class="text-slate-300 border">-</td>`;
+          }
+        }
+      }
+      tr += `<td class="font-bold bg-emerald-50 border">${total.H}</td><td class="font-bold bg-amber-50 border">${total.S}</td><td class="font-bold bg-blue-50 border">${total.I}</td><td class="font-bold bg-red-50 border">${total.A}</td></tr>`;
+      tb.innerHTML = tr;
     }
+
+    // Data Nilai Ku versi Rinci seperti Input Nilai
     function renderSiswaNilai() {
-      const tb = document.getElementById('tbodySiswaNilai'); if(!tb) return; tb.innerHTML=''; let c=0;
-      for(let i=globalNilaiData.length-1; i>=1; i--) {
-        const r = globalNilaiData[i];
-        if(String(r[2]) === String(currentUser.NIS)) { tb.innerHTML += `<tr class="border-b text-sm"><td class="p-2">${r[1]}</td><td class="p-2 font-semibold">${r[5]}</td><td class="p-2">${r[6]}</td><td class="p-2 font-bold text-blue-600">${r[7]}</td></tr>`; c++; }
+      const tb = document.getElementById('tbodySiswaNilai');
+      const thead = document.getElementById('theadSiswaNilai');
+      if(!tb) return;
+
+      let mapelDataMap = {};
+      let jenisSet = new Set(['Tugas 1', 'Tugas 2', 'Tugas 3', 'Praktek', 'ASAS', 'ASAJ']);
+
+      for(let i=1; i<globalNilaiData.length; i++) {
+        const r = globalNilaiData[i]; if(!r) continue;
+        const nis = String(r[2]).trim();
+        if(nis === String(currentUser.NIS).trim()) {
+          const mapel = String(r[5]).trim(); const jenis = String(r[6]).trim(); const val = parseFloat(r[7]);
+          const ket = r[8] && r[8] !== '-' ? r[8] : '';
+
+          jenisSet.add(jenis);
+          if(!mapelDataMap[mapel]) mapelDataMap[mapel] = { grades: {}, ket: '' };
+          if(!isNaN(val)) mapelDataMap[mapel].grades[jenis] = val;
+          if(ket) mapelDataMap[mapel].ket = ket;
+        }
       }
-      if(c===0) tb.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-500">Belum ada nilai</td></tr>';
+
+      let jenisArr = Array.from(jenisSet);
+
+      if(thead) {
+        let thHtml = `<tr class="bg-slate-100 text-xs font-bold border-b"><th class="p-2 border text-left min-w-[140px]">Mata Pelajaran</th>`;
+        jenisArr.forEach(j => thHtml += `<th class="p-2 border text-center">${j}</th>`);
+        thHtml += `<th class="p-2 border text-center bg-emerald-100">Rata2</th><th class="p-2 border text-left bg-rose-50 text-rose-800">Tugas Yg Belum</th><th class="p-2 border text-left">Keterangan</th></tr>`;
+        thead.innerHTML = thHtml;
+      }
+
+      tb.innerHTML = '';
+      let mapelKeys = Object.keys(mapelDataMap);
+      if(mapelKeys.length === 0) {
+        tb.innerHTML = `<tr><td colspan="${jenisArr.length + 4}" class="p-3 text-center text-slate-500">Belum ada data nilai.</td></tr>`;
+        return;
+      }
+
+      mapelKeys.forEach(m => {
+        const mData = mapelDataMap[m];
+        let tr = `<tr class="border-b text-sm"><td class="p-2 font-bold border">${m}</td>`;
+        let sum = 0, count = 0, missing = [];
+
+        jenisArr.forEach(j => {
+          const val = mData.grades[j];
+          if(val !== undefined && !isNaN(val)) {
+            tr += `<td class="p-2 text-center border font-semibold">${val}</td>`;
+            sum += val; count++;
+          } else {
+            tr += `<td class="p-2 text-center border text-slate-300">-</td>`;
+            let singkatan = j.replace(/Tugas\s*/i, 'T').replace(/Praktek/i, 'P');
+            missing.push(singkatan);
+          }
+        });
+
+        let avg = count > 0 ? (sum / count).toFixed(1) : '0';
+        let missingText = missing.length > 0 ? missing.join(', ') : '<span class="text-emerald-600 font-bold">Lengkap</span>';
+        let ketText = mData.ket || '-';
+
+        tr += `<td class="p-2 text-center font-bold bg-emerald-50 border">${avg}</td>
+               <td class="p-2 text-xs text-rose-600 font-medium border">${missingText}</td>
+               <td class="p-2 text-xs border">${ketText}</td></tr>`;
+        tb.innerHTML += tr;
+      });
+    }
+
+    // POIN 7: FITUR EDIT SISWA KHUSUS SISWA
+    function loadStudentSelfData() {
+      let idx = -1;
+      for (let i = 1; i < globalSiswaData.length; i++) {
+        if (String(globalSiswaData[i][0]).trim() === String(currentUser.NIS).trim()) {
+          idx = i; break;
+        }
+      }
+
+      document.getElementById('selfSiswaNis').value = currentUser.NIS || '';
+      document.getElementById('selfSiswaNama').value = currentUser.nama || '';
+      document.getElementById('selfSiswaKelas').value = currentUser.kelas || '';
+
+      if (idx !== -1) {
+        const r = globalSiswaData[idx];
+        document.getElementById('selfSiswaJK').value = (r[3] === 'P' ? 'Perempuan (P)' : 'Laki-laki (L)');
+        document.getElementById('selfSiswaTglLahir').value = r[4] || '';
+        document.getElementById('selfSiswaHP').value = r[5] || '';
+        document.getElementById('selfSiswaEkskul').value = r[6] || '';
+        document.getElementById('selfSiswaOrtu').value = r[7] || '';
+        document.getElementById('selfSiswaAlamat').value = r[8] || '';
+        document.getElementById('selfSiswaHPOrtu').value = r[9] || '';
+        document.getElementById('selfSiswaKet').value = r[10] || '';
+        document.getElementById('selfSiswaPass').value = r[11] || '123456';
+      }
+    }
+
+    function saveStudentSelfEdit() {
+      let idx = -1;
+      for (let i = 1; i < globalSiswaData.length; i++) {
+        if (String(globalSiswaData[i][0]).trim() === String(currentUser.NIS).trim()) {
+          idx = i; break;
+        }
+      }
+      if (idx === -1) return alert("Data siswa tidak ditemukan di database!");
+
+      const rowData = [
+        String(currentUser.NIS),
+        String(currentUser.nama),
+        String(currentUser.kelas),
+        globalSiswaData[idx][3] || 'L',
+        document.getElementById('selfSiswaTglLahir').value,
+        document.getElementById('selfSiswaHP').value,
+        document.getElementById('selfSiswaEkskul').value,
+        document.getElementById('selfSiswaOrtu').value,
+        document.getElementById('selfSiswaAlamat').value,
+        document.getElementById('selfSiswaHPOrtu').value,
+        document.getElementById('selfSiswaKet').value,
+        document.getElementById('selfSiswaPass').value
+      ];
+
+      fetchAPI('updateDataRow', { sheetName: 'Siswa', rowData: rowData, dataIndex: idx }).then(res => {
+        alert(res ? res.message || "Data profil berhasil diperbarui!" : "Berhasil memperbarui data!");
+        fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => {
+          globalSiswaData = data || [];
+          loadStudentSelfData();
+        });
+      });
+    }
+
+    // ==============================================
+    // DATA SISWA (POIN 2 & 3: FILTER KELAS & POPUP MODAL)
+    // ==============================================
+    function renderDataSiswa() {
+      const tbody = document.getElementById('tbodyDataSiswa');
+      const fKelas = document.getElementById('filterSiswaKelas')?.value || '';
+      if(!tbody) return;
+      tbody.innerHTML = '';
+      
+      const selFilter = document.getElementById('filterSiswaKelas');
+      if (selFilter) {
+        const curVal = selFilter.value;
+        selFilter.innerHTML = '<option value="">Semua Kelas</option>';
+        globalKelasData.forEach(k => selFilter.innerHTML += `<option value="${k}">${k}</option>`);
+        if (curVal) selFilter.value = curVal;
+      }
+
+      if(globalSiswaData.length <= 1) { tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 text-slate-500">Kosong</td></tr>'; return; }
+      
+      let count = 0;
+      for(let i=1; i<globalSiswaData.length; i++) {
+        const r = globalSiswaData[i]; if(!r) continue;
+        if(fKelas && String(r[2]).trim() !== fKelas) continue;
+        count++;
+
+        tbody.innerHTML += `
+          <tr class="border-b text-sm hover:bg-slate-50">
+            <td class="p-2 border font-mono">${r[0]||''}</td>
+            <td class="p-2 border font-bold">${r[1]||''}</td>
+            <td class="p-2 border text-center"><span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-semibold">${r[2]||''}</span></td>
+            <td class="p-2 border text-center">${r[3]||'L'}</td>
+            <td class="p-2 border text-slate-600">${r[5]||'-'}</td>
+            <td class="p-2 border text-center">
+              <button onclick="openFormSiswaModal(${i})" class="text-amber-500 hover:text-amber-700 mx-1 p-1" title="Edit"><i class="fa-solid fa-edit"></i></button>
+              <button onclick="hapusSiswa(${i})" class="text-red-500 hover:text-red-700 mx-1 p-1" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+            </td>
+          </tr>`;
+      }
+      if (count === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center p-3 text-slate-500">Tidak ada siswa di kelas ini</td></tr>';
+      }
+    }
+
+    function openFormSiswaModal(idx) {
+      document.getElementById('formSiswaIndex').value = idx;
+      const modal = document.getElementById('modalFormSiswa');
+      const title = document.getElementById('modalFormSiswaTitle');
+
+      const selKelas = document.getElementById('formSiswaKelas');
+      selKelas.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+      globalKelasData.forEach(k => selKelas.innerHTML += `<option value="${k}">${k}</option>`);
+
+      if (idx === -1) {
+        title.innerHTML = '<i class="fa-solid fa-user-plus text-blue-600"></i> Tambah Data Siswa Baru';
+        document.getElementById('formSiswaNis').value = '';
+        document.getElementById('formSiswaNama').value = '';
+        document.getElementById('formSiswaKelas').value = '';
+        document.getElementById('formSiswaJK').value = 'L';
+        document.getElementById('formSiswaTglLahir').value = '';
+        document.getElementById('formSiswaHP').value = '';
+        document.getElementById('formSiswaEkskul').value = '';
+        document.getElementById('formSiswaOrtu').value = '';
+        document.getElementById('formSiswaAlamat').value = '';
+        document.getElementById('formSiswaHPOrtu').value = '';
+        document.getElementById('formSiswaKet').value = '';
+        document.getElementById('formSiswaPass').value = '123456';
+      } else {
+        title.innerHTML = '<i class="fa-solid fa-user-pen text-amber-600"></i> Edit Data Siswa';
+        const r = globalSiswaData[idx];
+        document.getElementById('formSiswaNis').value = r[0] || '';
+        document.getElementById('formSiswaNama').value = r[1] || '';
+        document.getElementById('formSiswaKelas').value = r[2] || '';
+        document.getElementById('formSiswaJK').value = r[3] || 'L';
+        document.getElementById('formSiswaTglLahir').value = r[4] || '';
+        document.getElementById('formSiswaHP').value = r[5] || '';
+        document.getElementById('formSiswaEkskul').value = r[6] || '';
+        document.getElementById('formSiswaOrtu').value = r[7] || '';
+        document.getElementById('formSiswaAlamat').value = r[8] || '';
+        document.getElementById('formSiswaHPOrtu').value = r[9] || '';
+        document.getElementById('formSiswaKet').value = r[10] || '';
+        document.getElementById('formSiswaPass').value = r[11] || '123456';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeFormSiswaModal() {
+      document.getElementById('modalFormSiswa').classList.add('hidden');
+    }
+
+    function simpanSiswa() {
+      const rowData = [
+        document.getElementById('formSiswaNis').value,
+        document.getElementById('formSiswaNama').value,
+        document.getElementById('formSiswaKelas').value,
+        document.getElementById('formSiswaJK').value,
+        document.getElementById('formSiswaTglLahir').value,
+        document.getElementById('formSiswaHP').value,
+        document.getElementById('formSiswaEkskul').value,
+        document.getElementById('formSiswaOrtu').value,
+        document.getElementById('formSiswaAlamat').value,
+        document.getElementById('formSiswaHPOrtu').value,
+        document.getElementById('formSiswaKet').value,
+        document.getElementById('formSiswaPass').value
+      ];
+      
+      if(!rowData[0] || !rowData[1] || !rowData[2]) return alert("NIS, Nama, dan Kelas wajib diisi!");
+      const idx = document.getElementById('formSiswaIndex').value;
+      
+      let action = idx === "-1" ? 'addDataRow' : 'updateDataRow';
+      fetchAPI(action, { sheetName: 'Siswa', rowData: rowData, dataIndex: idx === "-1" ? null : idx }).then(res => {
+        alert(res ? res.message : 'Berhasil menyimpan data!');
+        closeFormSiswaModal();
+        refreshSiswaData();
+      });
+    }
+
+    function hapusSiswa(idx) {
+      if(!confirm(`Hapus siswa ${globalSiswaData[idx][1]}?`)) return;
+      fetchAPI('deleteDataRow', { sheetName: 'Siswa', dataIndex: idx }).then(res => {
+        alert(res.message); refreshSiswaData();
+      });
+    }
+
+    function refreshSiswaData() {
+      fetchAPI('getSheetData', { sheetName: 'Siswa' }).then(data => { 
+        globalSiswaData = data || []; renderDataSiswa(); 
+      });
     }
   </script>
 
@@ -672,7 +969,10 @@ function setFormBerdasarkanRole(role) {
           <button onclick="showSection('kelolaMapelView'); renderKelolaMasterData();" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-orange-600 border border-orange-100"><i class="fa-solid fa-book-open text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide text-center">Mapel & Kelas</span></button>
           <button onclick="showSection('hariLiburView'); renderHariLiburTable();" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-rose-600 border border-rose-100"><i class="fa-solid fa-calendar-xmark text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide text-center">Hari Libur</span></button>
           <button onclick="showSection('pengaturanSekolahView');" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-slate-600 border border-slate-100"><i class="fa-solid fa-gear text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Profil Sekolah</span></button>
-          <button onclick="showSection('studentProfileView'); renderStudentProfile();" class="bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-teal-600 border border-teal-100"><i class="fa-solid fa-id-card text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Kartu Profil</span></button>
+          <button onclick="showSection('dataSiswaView'); renderDataSiswa();" class="admin-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-blue-600 border border-blue-100"><i class="fa-solid fa-users text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Data Siswa</span></button>
+          
+          <button onclick="showSection('studentProfileView'); renderStudentProfile();" class="siswa-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-teal-600 border border-teal-100"><i class="fa-solid fa-id-card text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Kartu Profil</span></button>
+          <button onclick="showSection('studentEditProfileView'); loadStudentSelfData();" class="siswa-only bg-white p-4 rounded-xl shadow hover:shadow-md transition flex flex-col items-center text-indigo-600 border border-indigo-100"><i class="fa-solid fa-user-gear text-3xl mb-2"></i><span class="font-semibold text-[10px] uppercase tracking-wide">Input Siswa</span></button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -733,7 +1033,7 @@ function setFormBerdasarkanRole(role) {
         </div>
       </div>
 
-      <!-- 3. KELOLA MASTER DATA (Tugas 6 & 8) -->
+      <!-- 3. KELOLA MASTER DATA -->
       <div id="kelolaMapelView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -756,33 +1056,39 @@ function setFormBerdasarkanRole(role) {
             <h2 class="font-bold text-base mb-3 text-rose-600"><i class="fa-solid fa-calendar-days"></i> Master Jadwal</h2>
             <button onclick="addJadwalItem()" class="w-full bg-rose-600 text-white py-1.5 rounded text-sm font-bold mb-3"><i class="fa-solid fa-plus"></i> Tambah Jadwal</button>
             <div class="max-h-64 overflow-y-auto"><table class="w-full text-xs text-left"><thead class="bg-slate-100"><tr><th class="p-2">Waktu</th><th class="p-2">Kelas</th><th class="p-2">Mapel</th><th class="p-2 text-center">Hapus</th></tr></thead><tbody id="jadwalListBody"></tbody></table></div>
-<!-- Form Input untuk memilih warna jadwal pelajaran -->
-<label for="warnaMapel">Pilih Warna Mapel & Kelas:</label>
-<input type="color" id="warnaMapel" name="warnaMapel" value="#ff0000">
-
-<!-- Saat ditampilkan di tabel jadwal -->
-<td style="background-color: #ff0000; color: white;">
-  Matematika - XII RPL 1
-</td>
           </div>
         </div>
       </div>
 
-      <!-- 4. HARI LIBUR (Tugas 5) -->
+      <!-- 4. HARI LIBUR (POIN 5: PILIHAN CEKLIS SABTU & MINGGU) -->
       <div id="hariLiburView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-5 rounded-xl shadow border max-w-2xl">
           <h2 class="font-bold text-lg mb-4 text-rose-600"><i class="fa-solid fa-calendar-xmark"></i> Pengaturan Hari Libur Sekolah</h2>
+          
+          <div class="bg-slate-50 p-4 rounded-lg border mb-5">
+            <label class="block text-xs font-bold mb-2 text-slate-700 uppercase">Libur Rutin Mingguan (Ceklis yang Berlaku):</label>
+            <div class="flex gap-6 items-center">
+              <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800">
+                <input type="checkbox" id="chkLiburSabtu" onchange="saveLiburRutin()" class="w-4 h-4 text-rose-600 rounded"> Libur Sabtu
+              </label>
+              <label class="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-slate-800">
+                <input type="checkbox" id="chkLiburMinggu" onchange="saveLiburRutin()" class="w-4 h-4 text-rose-600 rounded" checked> Libur Minggu
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-1.5">* Hari libur rutin mingguan akan otomatis diwarnai merah pada Laporan Presensi tanpa perlu dicatat pada tabel keterangan libur custom di bawah.</p>
+          </div>
+
           <div class="flex gap-2 mb-6 items-end">
-             <div class="flex-1"><label class="block text-xs font-bold mb-1">Pilih Tanggal</label><input type="date" id="inputTglLibur" class="w-full border p-2 rounded text-sm"></div>
-             <div class="flex-[2]"><label class="block text-xs font-bold mb-1">Keterangan Libur</label><input type="text" id="inputKetLibur" placeholder="Contoh: HUT Kemerdekaan RI" class="w-full border p-2 rounded text-sm"></div>
+             <div class="flex-1"><label class="block text-xs font-bold mb-1">Pilih Tanggal Custom</label><input type="date" id="inputTglLibur" class="w-full border p-2 rounded text-sm"></div>
+             <div class="flex-[2]"><label class="block text-xs font-bold mb-1">Keterangan Libur Custom</label><input type="text" id="inputKetLibur" placeholder="Contoh: HUT Kemerdekaan RI" class="w-full border p-2 rounded text-sm"></div>
              <button onclick="addHariLibur()" class="bg-rose-600 text-white font-bold px-4 py-2 rounded shadow text-sm"><i class="fa-solid fa-plus"></i> Tambah</button>
           </div>
-          <table class="w-full text-sm text-left"><thead class="bg-slate-100"><tr><th class="p-2 border">Tanggal (YYYY-MM-DD)</th><th class="p-2 border w-1/2">Keterangan</th><th class="p-2 border text-center w-16">Aksi</th></tr></thead><tbody id="tbodyHariLibur"></tbody></table>
+          <table class="w-full text-sm text-left"><thead class="bg-slate-100"><tr><th class="p-2 border">Tanggal (YYYY-MM-DD)</th><th class="p-2 border w-1/2">Keterangan Custom</th><th class="p-2 border text-center w-16">Aksi</th></tr></thead><tbody id="tbodyHariLibur"></tbody></table>
         </div>
       </div>
 
-      <!-- 5. INPUT NILAI (Tugas 3) -->
+      <!-- 5. INPUT NILAI (POIN 1: LAYER NAMA DIATAS NAMA SELALU TERLIHAT) -->
       <div id="inputNilaiView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-5 rounded-xl shadow border mb-4">
@@ -798,10 +1104,17 @@ function setFormBerdasarkanRole(role) {
              <button onclick="refreshDataNilai()" class="bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded shadow hover:bg-slate-300 text-sm"><i class="fa-solid fa-rotate-right"></i> Refresh Data</button>
           </div>
         </div>
-        <div class="bg-white p-5 rounded-xl shadow border overflow-x-auto"><table class="w-full text-sm text-left border-collapse"><thead id="theadInputNilai"></thead><tbody id="tbodyInputNilai"><tr><td colspan="15" class="text-center p-4">Pilih kelas & mapel terlebih dahulu</td></tr></tbody></table></div>
+
+        <!-- Tabel dengan Freeze / Sticky Column untuk Nama & NIS -->
+        <div class="bg-white p-5 rounded-xl shadow border overflow-auto max-h-[65vh] relative">
+          <table class="w-full text-sm text-left border-collapse min-w-max">
+            <thead id="theadInputNilai"></thead>
+            <tbody id="tbodyInputNilai"><tr><td colspan="15" class="text-center p-4">Pilih kelas & mapel terlebih dahulu</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
-      <!-- 6. DATA NILAI (Tugas 4) -->
+      <!-- 6. DATA NILAI -->
       <div id="dataNilaiView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline no-print"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-4 rounded-xl shadow border mb-4 no-print flex flex-wrap gap-3 items-end">
@@ -821,7 +1134,7 @@ function setFormBerdasarkanRole(role) {
         </div>
       </div>
 
-      <!-- 7. LAPORAN PRESENSI (Tugas 5 & 7) -->
+      <!-- 7. LAPORAN PRESENSI (POIN 4: TAMPILAN WARNA MERAH) -->
       <div id="laporanView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline no-print"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-4 rounded-xl shadow border mb-4 no-print flex flex-wrap gap-3 items-end">
@@ -855,7 +1168,7 @@ function setFormBerdasarkanRole(role) {
             </table>
           </div>
 
-          <div class="mt-4 text-xs mb-8"><p><strong>Keterangan:</strong> H = Hadir, S = Sakit, I = Izin, A = Alfa, <span class="text-red-500 font-bold">L = Libur (Minggu / Tanggal Merah)</span>.</p></div>
+          <div class="mt-4 text-xs mb-8"><p><strong>Keterangan:</strong> H = Hadir, S = Sakit, I = Izin, A = Alfa, <span class="text-red-500 font-bold">L = Libur (Sabtu/Minggu/Tanggal Merah)</span>.</p></div>
           <div class="flex justify-between mt-12 text-sm px-10">
             <div class="text-center"><p>Mengetahui,</p><p>Kepala Sekolah</p><br><br><br><p class="font-bold underline" id="ttdKepsekNama">Nama Kepala Sekolah</p><p>NIP. <span id="ttdKepsekNIP">-</span></p></div>
             <div class="text-center"><p id="ttdTanggal">Banjar, Tanggal</p><p>Guru Mata Pelajaran <span id="ttdMapelNama" class="font-bold"></span></p><br><br><br><p class="font-bold underline" id="ttdGuruNama">Nama Guru</p><p>NIP. <span id="ttdGuruNIP">-</span></p></div>
@@ -863,7 +1176,7 @@ function setFormBerdasarkanRole(role) {
         </div>
       </div>
 
-      <!-- 8. PENGATURAN SEKOLAH (Tugas 7) -->
+      <!-- 8. PENGATURAN SEKOLAH -->
       <div id="pengaturanSekolahView" class="view-section hidden">
         <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
         <div class="bg-white p-6 rounded-xl shadow border max-w-lg">
@@ -878,7 +1191,71 @@ function setFormBerdasarkanRole(role) {
         </div>
       </div>
 
-      <!-- 9. PROFIL & DASHBOARD SISWA -->
+      <!-- VIEW: DATA SISWA (POIN 2 & 3: FILTER KELAS & POPUP MODAL) -->
+      <div id="dataSiswaView" class="view-section hidden">
+        <button onclick="showSection('dashboardView')" class="mb-4 text-blue-600 font-bold hover:underline"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+        <div class="bg-white p-5 rounded-xl shadow border mb-4">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+             <h2 class="font-bold text-lg text-blue-700"><i class="fa-solid fa-users"></i> Kelola Data Siswa</h2>
+             <div class="flex items-center gap-2">
+                <label class="text-xs font-bold text-slate-600">Filter Kelas:</label>
+                <select id="filterSiswaKelas" onchange="renderDataSiswa()" class="border px-3 py-1.5 rounded-lg text-sm font-semibold bg-slate-50 outline-none">
+                   <option value="">Semua Kelas</option>
+                </select>
+                <button onclick="openFormSiswaModal(-1)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg text-sm shadow flex items-center gap-1.5 ml-2">
+                  <i class="fa-solid fa-user-plus"></i> Tambah Siswa
+                </button>
+             </div>
+          </div>
+          
+          <div class="overflow-x-auto border rounded-lg">
+            <table class="w-full text-sm text-left whitespace-nowrap">
+              <thead class="bg-slate-100">
+                <tr><th class="p-2.5 border">NIS</th><th class="p-2.5 border">Nama Siswa</th><th class="p-2.5 border text-center">Kelas</th><th class="p-2.5 border text-center">JK</th><th class="p-2.5 border">No HP</th><th class="p-2.5 border text-center">Aksi</th></tr>
+              </thead>
+              <tbody id="tbodyDataSiswa"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- POPUP MODAL FORM SISWA (POIN 2 & 3) -->
+      <div id="modalFormSiswa" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 relative">
+          <button onclick="closeFormSiswaModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+          <h2 id="modalFormSiswaTitle" class="font-bold text-lg mb-4 text-blue-700 flex items-center gap-2">
+            <i class="fa-solid fa-user-pen"></i> Form Data Siswa
+          </h2>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+             <div><label class="block text-xs font-bold mb-1">NIS</label><input type="text" id="formSiswaNis" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">Nama Lengkap</label><input type="text" id="formSiswaNama" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">Kelas</label><select id="formSiswaKelas" class="border p-2 rounded w-full text-sm"></select></div>
+             
+             <div><label class="block text-xs font-bold mb-1">Jenis Kelamin</label>
+                  <select id="formSiswaJK" class="border p-2 rounded w-full text-sm"><option value="L">Laki-laki (L)</option><option value="P">Perempuan (P)</option></select></div>
+             <div><label class="block text-xs font-bold mb-1">Tanggal Lahir</label><input type="date" id="formSiswaTglLahir" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">No HP / WA</label><input type="text" id="formSiswaHP" class="border p-2 rounded w-full text-sm"></div>
+             
+             <div><label class="block text-xs font-bold mb-1">Ekstrakurikuler</label><input type="text" id="formSiswaEkskul" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">Nama Ortu/Wali</label><input type="text" id="formSiswaOrtu" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">No HP Ortu</label><input type="text" id="formSiswaHPOrtu" class="border p-2 rounded w-full text-sm"></div>
+             
+             <div class="md:col-span-2"><label class="block text-xs font-bold mb-1">Alamat Rumah</label><input type="text" id="formSiswaAlamat" class="border p-2 rounded w-full text-sm"></div>
+             <div><label class="block text-xs font-bold mb-1">Password</label><input type="text" id="formSiswaPass" value="123456" class="border p-2 rounded w-full text-sm"></div>
+             
+             <div class="md:col-span-3"><label class="block text-xs font-bold mb-1">Keterangan Khusus</label><input type="text" id="formSiswaKet" class="border p-2 rounded w-full text-sm"></div>
+          </div>
+          
+          <input type="hidden" id="formSiswaIndex" value="-1">
+          <div class="flex justify-end gap-2 border-t pt-4">
+             <button onclick="closeFormSiswaModal()" class="px-4 py-2 border rounded-lg text-slate-600 font-semibold text-sm hover:bg-slate-50">Batal</button>
+             <button onclick="simpanSiswa()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-sm shadow">Simpan Data Siswa</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9. PROFIL & DASHBOARD SISWA (POIN 3 BUKAN / POIN 6 & 7) -->
       <div id="studentProfileView" class="view-section hidden">
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           <div class="bg-white p-6 rounded-xl shadow border text-center flex flex-col items-center h-fit">
@@ -887,24 +1264,99 @@ function setFormBerdasarkanRole(role) {
             <p class="text-xs text-slate-500 mb-4">NIS: <span id="profileNIS" class="font-bold">...</span> | Kelas: <span id="profileKelas" class="font-bold">...</span></p>
             <div class="bg-slate-50 p-4 border border-teal-100 rounded-xl flex flex-col items-center w-full"><div id="qrcodeContainer" class="p-2 bg-white rounded-lg shadow-sm border mb-2"></div><p class="text-xs text-teal-700 font-bold">QR Code Presensi</p></div>
           </div>
+
           <div class="lg:col-span-2 space-y-6">
+            <!-- Riwayat Kehadiran Ku (Tampilan Matriks seperti Lap Presensi) -->
             <div class="bg-white p-5 rounded-xl shadow border">
-              <div class="flex justify-between items-center mb-3 border-b pb-2"><h3 class="font-bold text-lg text-slate-800"><i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Riwayat Kehadiran Ku</h3><select id="siswaFilterMapel" onchange="renderSiswaKehadiran()" class="border px-2 py-1 rounded text-xs outline-none bg-slate-50"></select></div>
-              <div class="overflow-y-auto max-h-48"><table class="w-full text-sm text-left"><thead class="bg-slate-100 sticky top-0 text-xs"><tr><th class="p-2">Waktu</th><th class="p-2">Mapel / Eskul</th><th class="p-2">Status</th></tr></thead><tbody id="tbodySiswaKehadiran"></tbody></table></div>
+              <div class="flex flex-wrap justify-between items-center mb-3 border-b pb-2 gap-2">
+                <h3 class="font-bold text-base text-slate-800 flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-blue-600"></i> Riwayat Kehadiran Ku</h3>
+                <div class="flex items-center gap-2">
+                   <input type="month" id="siswaLapBulan" onchange="renderSiswaKehadiran()" class="border px-2 py-1 rounded text-xs outline-none bg-slate-50">
+                   <select id="siswaFilterMapel" onchange="renderSiswaKehadiran()" class="border px-2 py-1 rounded text-xs outline-none bg-slate-50"></select>
+                </div>
+              </div>
+              <div class="overflow-x-auto"><table class="w-full text-xs text-left min-w-max border-collapse"><thead id="theadSiswaKehadiran"></thead><tbody id="tbodySiswaKehadiran"></tbody></table></div>
             </div>
+
+            <!-- Data Nilai Ku (Tampilan Rinci seperti Menu Data Nilai) -->
             <div class="bg-white p-5 rounded-xl shadow border">
-               <h3 class="font-bold text-lg mb-3 text-slate-800 border-b pb-2"><i class="fa-solid fa-award text-amber-500"></i> Data Nilai Ku</h3>
-               <div class="overflow-y-auto max-h-48"><table class="w-full text-sm text-left"><thead class="bg-slate-100 sticky top-0 text-xs"><tr><th class="p-2">Semester</th><th class="p-2">Mata Pelajaran</th><th class="p-2">Jenis Penilaian</th><th class="p-2">Nilai</th></tr></thead><tbody id="tbodySiswaNilai"></tbody></table></div>
+               <h3 class="font-bold text-base mb-3 text-slate-800 border-b pb-2 flex items-center gap-2"><i class="fa-solid fa-award text-amber-500"></i> Data Nilai Ku</h3>
+               <div class="overflow-x-auto"><table class="w-full text-xs text-left min-w-max border-collapse"><thead id="theadSiswaNilai"></thead><tbody id="tbodySiswaNilai"></tbody></table></div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- POIN 7: MENU INPUT SISWA KHUSUS LOGIN SISWA -->
+      <div id="studentEditProfileView" class="view-section hidden">
+        <div class="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow border">
+          <h2 class="font-bold text-lg mb-4 text-indigo-700 flex items-center gap-2 border-b pb-3">
+            <i class="fa-solid fa-user-pen"></i> Menu Input Siswa - Edit Data Profil Saya
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+             <div>
+                <label class="block text-xs font-bold mb-1 text-slate-500">NIS (Terkunci)</label>
+                <input type="text" id="selfSiswaNis" disabled class="bg-slate-100 border p-2 rounded w-full text-sm font-mono text-slate-600 cursor-not-allowed">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1 text-slate-500">Nama Lengkap (Terkunci)</label>
+                <input type="text" id="selfSiswaNama" disabled class="bg-slate-100 border p-2 rounded w-full text-sm font-bold text-slate-600 cursor-not-allowed">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1 text-slate-500">Kelas (Terkunci)</label>
+                <input type="text" id="selfSiswaKelas" disabled class="bg-slate-100 border p-2 rounded w-full text-sm text-slate-600 cursor-not-allowed">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1 text-slate-500">Jenis Kelamin (Terkunci)</label>
+                <input type="text" id="selfSiswaJK" disabled class="bg-slate-100 border p-2 rounded w-full text-sm text-slate-600 cursor-not-allowed">
+             </div>
+
+             <div>
+                <label class="block text-xs font-bold mb-1">Tanggal Lahir</label>
+                <input type="date" id="selfSiswaTglLahir" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1">No HP / WA</label>
+                <input type="text" id="selfSiswaHP" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1">Ekstrakurikuler</label>
+                <input type="text" id="selfSiswaEkskul" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1">Nama Ortu / Wali</label>
+                <input type="text" id="selfSiswaOrtu" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1">No HP Ortu / Wali</label>
+                <input type="text" id="selfSiswaHPOrtu" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div>
+                <label class="block text-xs font-bold mb-1">Password Baru</label>
+                <input type="text" id="selfSiswaPass" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div class="md:col-span-2">
+                <label class="block text-xs font-bold mb-1">Alamat Rumah</label>
+                <input type="text" id="selfSiswaAlamat" class="border p-2 rounded w-full text-sm">
+             </div>
+             <div class="md:col-span-2">
+                <label class="block text-xs font-bold mb-1">Keterangan Khusus</label>
+                <input type="text" id="selfSiswaKet" class="border p-2 rounded w-full text-sm">
+             </div>
+          </div>
+          <button onclick="saveStudentSelfEdit()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-sm shadow">
+            <i class="fa-solid fa-save mr-1"></i> Simpan Perubahan Data Saya
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
   <div id="loginPage" class="flex-1 flex items-center justify-center p-4">
     <div class="glass-effect p-8 rounded-2xl shadow-xl w-full max-w-sm text-center border">
-      <div class="mb-6"><i class="fa-solid fa-graduation-cap text-5xl text-blue-600 mb-3"></i><h1 class="text-2xl font-bold text-slate-800">Presensi & Nilai</h1></div>
+      <div class="mb-6"><img id="loginSchoolLogo" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_Tut_Wuri_Handayani.png/120px-Logo_Tut_Wuri_Handayani.png" alt="Logo Sekolah" class="h-20 w-20 object-contain mx-auto mb-3">
+      <h1 class="text-2xl font-bold text-slate-800">Presensi & Nilai</h1></div>
       <form onsubmit="handleLogin(event)" class="space-y-4">
         <div class="text-left"><label class="block text-xs font-semibold uppercase text-slate-600 mb-1">NIS / NIP</label><input type="text" id="username" class="w-full px-3 py-2 border rounded-lg outline-none" required></div>
         <div class="text-left"><label class="block text-xs font-semibold uppercase text-slate-600 mb-1">Password</label><input type="password" id="password" class="w-full px-3 py-2 border rounded-lg outline-none" required></div>
